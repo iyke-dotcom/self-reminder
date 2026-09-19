@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Self Reminder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Self Reminder</h1>
+
+    <form id="reminder-form" class="form">
+      <input type="text" id="title" placeholder="What do you want to remember?" required>
+      <input type="datetime-local" id="datetime" required>
+      <button type="submit">Add Reminder</button>
+    </form>
+
+    <ul id="reminder-list" class="list"></ul>
+    <p id="empty-state" class="empty">No reminders yet. Add one above.</p>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
