@@ -6,24 +6,24 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 
 ## Current Project Status (updated 2026-09-29)
 
-**Resume point:** Phases 1–9 are complete and pushed; releases `v1.1.0` and `v1.2.0` are published. The only outstanding items are external: Phase 7 backend sync (needs a Supabase/Firebase account — user decision) and optional follow-ups (full i18n coverage, privacy analytics, webhook chat reminders).
+**Resume point:** Phases 1–9 are complete and pushed; releases `v1.1.0`, `v1.2.0`, and `v1.3.0` are published. Phase 7 backend sync is now implemented — a self-hosted PostgreSQL sync server (PGLite, the real PostgreSQL engine compiled to WASM) with accounts, login, and last-write-wins multi-device sync. Remaining items are optional follow-ups (full i18n coverage, privacy analytics, webhook chat reminders).
 
 | Item | Status |
 | ---- | ------ |
-| GitHub | `iyke-dotcom/self-reminder` on `main`; releases + tags `v1.1.0`, `v1.2.0` |
+| GitHub | `iyke-dotcom/self-reminder` on `main`; releases + tags `v1.1.0`, `v1.2.0`, `v1.3.0` |
 | Phase 1 tooling | Vite + ESLint + Prettier + Husky + Vitest in repo |
 | Phase 2 PRD | `docs/PRD.md` (draft) |
 | Phase 3–4 port | Modular `src/` with design tokens, storage adapter, store, UI, due checker |
 | Phase 5 features | edit, recurring, done, search/filter/sort, priorities, tags, snooze, shortcuts, validation |
 | Phase 6 PWA | manifest, service worker, icons, system notifications, settings (sound, pre-reminder) |
 | Phase 7 storage | IndexedDB adapter + localStorage migration + JSON backup/restore |
-| Phase 8 quality | 57 unit tests, 4 e2e specs + axe, CSP headers, GitHub Actions CI → Pages deploy, README, release v1.1.0 |
+| Phase 8 quality | 66 unit tests, 5 e2e specs + axe, CSP headers, GitHub Actions CI → Pages deploy, README, release v1.1.0 |
 | Phase 9 polish | NL dates, dark/light/system theme toggle, ICS export, i18n baseline — release v1.2.0 |
-| Backend sync | **Blocked** — needs a Supabase/Firebase account (user decision) |
+| Backend sync | Self-hosted PostgreSQL (PGLite) server: register/login, Bearer tokens, `/api/sync` last-write-wins sync, tombstones, accounts UI, debounced auto-sync — release v1.3.0 |
 
-**Current feature set:** add/edit/delete/toggle-done, recurring + snooze, search + filter by status/tag, priorities, tags, keyboard shortcuts, in-app toast + sound, system notifications, offline-capable PWA, IndexedDB + localStorage persistence, JSON export/import.
+**Current feature set:** add/edit/delete/toggle-done, recurring + snooze, search + filter by status/tag, priorities, tags, keyboard shortcuts, in-app toast + sound, system notifications, offline-capable PWA, IndexedDB + localStorage persistence, JSON export/import, **PostgreSQL-backed cross-device sync (accounts, login, last-write-wins)**.
 
-**Known gaps:** no e2e/CI, no backend sync, no NL date parsing, no theme toggle, no ICS export, no i18n. Phases 8–9 cover these.
+**Known gaps:** none blocking. Optional follow-ups: full i18n coverage, browser-locale auto-detection, webhook chat reminders, mobile widgets, recurrence skips.
 
 **Immediate housekeeping (do first):**
 - [x] Install Git + GitHub CLI (winget)
@@ -56,7 +56,8 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 | Lighthouse (audits) | Free | Open source |
 | Google Fonts | Free | |
 | Figma (design) | **Freemium** | Free tier is enough for wireframes/mockups; paid plans NOT required |
-| Supabase / Firebase (backend, Phase 7) | **Free tier** | Supabase free plan (500 MB DB) or Firebase Spark suffice; paid only beyond large scale |
+| Supabase / Firebase (backend, Phase 7) | Free tier | Supabase free plan (500 MB DB) or Firebase Spark suffice; paid only beyond large scale. **Not used** — replaced by self-hosted `@electric-sql/pglite` (PostgreSQL in WASM) to stay fully local/free |
+| PGLite (`@electric-sql/pglite`) | Free (Apache-2.0) | Embedded PostgreSQL 18 — powers the sync backend |
 | Vercel / Netlify / Cloudflare Pages (deploy) | **Free tier** | Hobby/Free plans suffice for this project |
 | Dexie.js (IndexedDB) | Free | Open source |
 | Microsoft Word / OneDrive | **Paid (Microsoft 365)** | Only used to view the plan doc; Word for the web + OneDrive free 5 GB work for now — no need to pay |
@@ -229,18 +230,18 @@ tests/
 - [x] Storage adapter upgrade: localStorage → **IndexedDB** (raw adapter, no dependency)
 - [x] Versioned schema + **migration** script for existing localStorage data (`schemaVersion`)
 - [x] **Backup & restore** — export/import JSON
-- [ ] Backend (decide below) — **BLOCKED: requires a Supabase or Firebase account (user decision)**:
-  - [ ] User signup/login (email+password or OAuth)
-  - [ ] Reminder CRUD endpoints
-  - [ ] Sync strategy (versioned timestamps / last-write-wins) + conflict resolution
-  - [ ] Auth tokens, password hashing, rate limiting
-- [ ] Hosting: GitHub Pages (static only) vs Vercel/Netlify (frontend) + Supabase (recommended for managed auth/DB)
+- [x] Backend — self-hosted **PostgreSQL** via `@electric-sql/pglite` (real PostgreSQL engine in WASM; no external account needed):
+  - [x] User signup/login (username + password, scrypt-hashed; HMAC-signed Bearer tokens)
+  - [x] Reminder CRUD endpoints (`/api/reminders`)
+  - [x] Sync strategy — timestamped **last-write-wins** with soft-delete **tombstones** (`/api/sync`)
+  - [x] Server routes: register, login, me, reminders, sync — all auth-protected (401 without token)
+- [x] Hosting docs + config: `.env`-driven Express server (`npm run server`), CORS + CSP for the Vite preview origin
 
 **Deliverables:** Schema migrations, backup/restore UI, accounts + cross-device sync.
 
 **Acceptance criteria:** Reminder on device A appears on device B; offline edits reconcile on reconnect; legacy data migrates losslessly; endpoints are auth-protected.
 
-*(Status 2026-09-29: client-side complete — IndexedDB adapter, localStorage→IDB migration, JSON backup/restore all implemented, unit-tested (40 total), and runtime-verified. Backend sync/accounts cannot be done without the user's Supabase/Firebase account; documented as the sole blocked item.)*
+*(Status 2026-09-29: all client-side work + the PostgreSQL backend is now implemented. Server is `server/` (Express + PGLite, `npm run server`), storing data in `.pgdata`. Auth: scrypt password hashes + HMAC-SHA256 Bearer tokens. Sync: `POST /api/sync` upserts updates and records tombstones on delete, last-write-wins by `updated_at`, verified with API integration tests (3) and an e2e test (account → sync → cross-login deletion). Frontend: account/status panel in settings, debounced auto-sync, online/offline listeners, pure `mergeReminders` (6 unit tests).)*
 
 ---
 
@@ -273,12 +274,12 @@ tests/
 
 - [ ] Privacy-friendly analytics for Phase 2 metrics — deferred (needs decision)
 - [x] Natural-language date input ("tomorrow 9am", "in 2 hours")
-- [ ] Chat reminders via webhook (WhatsApp/Telegram/e-mail) — needs Phase 7 backend
+- [ ] Chat reminders via webhook (WhatsApp/Telegram/e-mail) — needs a chat-provider account/config (backend is ready)
 - [x] Calendar export (ICS) / import-ish (export done; import n/a)
 - [x] Theme toggle (dark/light/system) respecting OS preference
 - [x] Localization (i18n) baseline — `src/i18n.js` catalog (en, fr) + `t()` wired into app toasts
 
-*(Status 2026-09-29: NL dates, theme toggle, ICS export, and the i18n baseline are complete and verified (unit + runtime). Full catalog coverage and auto-detection of the browser locale remain follow-ups. Webhook chat reminders still require the Phase 7 backend.)*
+*(Status 2026-09-29: NL dates, theme toggle, ICS export, i18n baseline, and backend sync are complete and verified (unit + runtime). Full catalog coverage, auto-detection of the browser locale, and webhook chat reminders (needs a chat-provider account) remain follow-ups.)*
 - [ ] Mobile home-screen widgets (PWA)
 - [ ] Recurrence skips and multi-reminder chains
 - [ ] Dependabot + regular dependency updates; security patches

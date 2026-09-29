@@ -1,10 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111827" />
-    <meta name="description" content="A lightweight browser-based reminder app." />
+    <meta
+      name="description"
+      content="A lightweight browser-based reminder app."
+    />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -115,22 +118,70 @@
           <input id="pre-reminder" type="number" min="0" max="1440" step="1" />
         </label>
         <div class="backup-actions">
-          <button id="export-backup" type="button" class="btn">Export backup</button>
-          <button id="import-backup" type="button" class="btn">Import backup</button>
-          <button id="export-ics" type="button" class="btn">Export calendar (.ics)</button>
-          <input id="import-file" type="file" accept="application/json,.json" hidden />
+          <button id="export-backup" type="button" class="btn">
+            Export backup
+          </button>
+          <button id="import-backup" type="button" class="btn">
+            Import backup
+          </button>
+          <button id="export-ics" type="button" class="btn">
+            Export calendar (.ics)
+          </button>
+          <input
+            id="import-file"
+            type="file"
+            accept="application/json,.json"
+            hidden
+          />
         </div>
         <label class="setting nl-setting">
           <span>Quick date: "tomorrow 9am", "in 2 hours", "next monday"</span>
           <input id="nl-date" type="text" placeholder="Try: tomorrow 9am" />
           <button id="nl-apply" type="button" class="btn">Fill date</button>
         </label>
+        <div class="account" aria-label="Sync account">
+          <h3>Account sync (PostgreSQL)</h3>
+          <label class="setting">
+            <span>Server URL</span>
+            <input
+              id="sync-api"
+              type="url"
+              placeholder="http://localhost:3000"
+            />
+          </label>
+          <label class="setting">
+            <span>Username</span>
+            <input id="sync-username" type="text" autocomplete="username" />
+          </label>
+          <label class="setting">
+            <span>Password</span>
+            <input
+              id="sync-password"
+              type="password"
+              autocomplete="current-password"
+            />
+          </label>
+          <div class="backup-actions">
+            <button id="sync-register" type="button" class="btn">
+              Create account
+            </button>
+            <button id="sync-login" type="button" class="btn">Log in</button>
+            <button id="sync-now" type="button" class="btn">Sync now</button>
+            <button id="sync-logout" type="button" class="btn">Log out</button>
+          </div>
+          <p id="sync-status" class="sync-status" role="status"></p>
+        </div>
       </section>
     </main>
 
     <div id="modal" class="modal" hidden>
       <div class="modal-backdrop" data-close></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-heading"
+      >
         <h2 id="modal-heading">Edit Reminder</h2>
         <form id="modal-form" autocomplete="off">
           <label>

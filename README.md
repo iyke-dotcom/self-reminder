@@ -14,7 +14,8 @@ A lightweight, installable browser-based reminder app that helps you remember im
 - **PWA** — installable, with a service worker offering offline launch
 - **Durable storage** — data is stored in IndexedDB with automatic migration from the legacy localStorage format
 - **Backup & restore** — export JSON and import it back
-- **Settings** — sound on/off, "remind me X minutes before", notification toggle
+- **Cross-device sync (optional)** — accounts + login backed by a self-hosted **PostgreSQL** server, with last-write-wins merging and tombstone deletes
+- **Settings** — sound on/off, "remind me X minutes before", notification toggle, theme (system/dark/light)
 
 ## Getting Started
 
@@ -28,6 +29,19 @@ npm run dev
 ```
 
 Then open the URL Vite prints (usually `http://localhost:5173`).
+
+## Sync Backend (PostgreSQL, optional)
+
+The app is fully functional offline on one device. To enable cross-device sync, run a small self-hosted server that embeds the real PostgreSQL engine (via `@electric-sql/pglite`, so there's no separate database install or cloud account):
+
+```bash
+cp server/.env.example server/.env   # review PORT, DATA_DIR, JWT_SECRET
+npm run server
+```
+
+Then open the app, scroll to **Account sync** in Settings, set **Server URL** to `http://localhost:3000` (default), and **Create account** or **Log in**. Reminders sync automatically (debounced) and merge across devices with last-write-wins conflict resolution. Data is stored in `server/.pgdata`.
+
+Endpoints: `POST /api/register`, `POST /api/login`, `GET /api/me`, `GET /api/reminders`, `POST /api/sync` — every endpoint except register/login requires `Authorization: Bearer <token>`.
 
 ## Usage
 
@@ -51,7 +65,8 @@ Reminder list statuses (colors follow the app's dark theme):
 | `npm run preview` | Preview the production build |
 | `npm run lint` | ESLint |
 | `npm test` | Unit tests (Vitest) |
-| `npm run test:e2e` | End-to-end tests (Playwright, runs against a preview build) |
+| `npm run test:e2e` | End-to-end tests (Playwright, runs against a preview build + the sync server) |
+| `npm run server` | Start the PostgreSQL (PGLite) sync backend |
 | `npm run format` | Prettier format |
 
 ## Tech Stack
@@ -62,13 +77,15 @@ Reminder list statuses (colors follow the app's dark theme):
 - [Vitest](https://vitest.dev/) for unit tests
 - IndexedDB (via a small dependency-free adapter) + localStorage fallback
 - Service Worker / PWA manifest for offline + installability
+- [Express](https://expressjs.com/) + [PGLite](https://pglite.dev/) (`@electric-sql/pglite`) sync server — real PostgreSQL working in WASM
+- `node:crypto` for scrypt password hashing and HMAC-signed login tokens
 
 ## Architecture
 
 ```
 index.html          app shell (form, toolbar, settings, modal, toast)
 src/
-  main.js           bootstrapping: storage choose/migrate, store, view, wiring
+  main.js           bootstrapping: storage choose/migrate, store, view, sync, wiring
   styles/main.css   design tokens + component styles
   modules/
     reminders/      model, store, storage (localStorage), indexeddb,
@@ -77,9 +94,15 @@ src/
     ui/             form, list, modal, view (query/sort/status state)
     settings.js     persisted app settings
     backup.js       JSON export/import
-  utils/            date helpers, id generation
+    sync.js         account auth + cross-device sync (merge, tombstones)
+    ics.js          calendar (.ics) export
+  utils/            date helpers, natural-language dates, id generation
+  i18n.js           message catalog (en, fr) + t()
 public/             manifest, service worker, icons
+server/             Express + PGLite sync backend (db, auth, app, index, .env)
 tests/unit/         Vitest unit tests
+tests/server/       API integration tests (PGlite in-memory)
+tests/e2e/          Playwright end-to-end specs
 ```
 
 ## License

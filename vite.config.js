@@ -8,7 +8,7 @@ const previewHeaders = {
     "img-src 'self' data:",
     "media-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' http://localhost:3000",
     "worker-src 'self'",
     "manifest-src 'self'",
   ].join("; "),
@@ -22,6 +22,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.js"],
+    include: ["tests/unit/**/*.test.js", "tests/server/**/*.test.js"],
   },
 });

@@ -1,5 +1,6 @@
 export function createStore({ adapter, initial = [] }) {
   let state = { reminders: [...initial].map(withDefaults) };
+  let tombstones = [];
   const listeners = new Set();
 
   function emit() {
@@ -7,10 +8,16 @@ export function createStore({ adapter, initial = [] }) {
   }
 
   function setReminders(reminders) {
-    state = { reminders };
-    adapter.save(reminders);
+    const stamp = Date.now();
+    const prev = new Map(state.reminders.map((r) => [r.id, r]));
+    state = {
+      reminders: reminders.map((item) =>
+        prev.get(item.id) === item ? item : { ...item, updatedAt: stamp },
+      ),
+    };
+    adapter.save(state.reminders);
     if (adapter.saveAsync) {
-      adapter.saveAsync(reminders).catch((error) => {
+      adapter.saveAsync(state.reminders).catch((error) => {
         console.error("Async persistence failed", error);
       });
     }
@@ -33,7 +40,14 @@ export function createStore({ adapter, initial = [] }) {
       setReminders([...state.reminders, withDefaults(reminder)]);
     },
     replaceAll(reminders) {
-      setReminders(reminders.map(withDefaults));
+      state = { reminders: reminders.map(withDefaults) };
+      adapter.save(state.reminders);
+      if (adapter.saveAsync) {
+        adapter.saveAsync(state.reminders).catch((error) => {
+          console.error("Async persistence failed", error);
+        });
+      }
+      emit();
     },
     updateReminder(id, patch) {
       updateMap((items) =>
@@ -43,6 +57,11 @@ export function createStore({ adapter, initial = [] }) {
       );
     },
     deleteReminder(id) {
+      const item = state.reminders.find((r) => r.id === id);
+      if (item) {
+        tombstones = tombstones.filter((t) => t.id !== id);
+        tombstones.push({ id, updatedAt: Date.now() });
+      }
       updateMap((items) => items.filter((item) => item.id !== id));
     },
     toggleDone(id) {
@@ -85,6 +104,13 @@ export function createStore({ adapter, initial = [] }) {
         ),
       );
     },
+    getTombstones() {
+      return [...tombstones];
+    },
+    ackTombstones(ids) {
+      const acked = new Set(ids);
+      tombstones = tombstones.filter((t) => !acked.has(t.id));
+    },
   };
 }
 
@@ -95,6 +121,7 @@ function withDefaults(reminder) {
     priority: "medium",
     tags: [],
     recurring: null,
+    updatedAt: Date.now(),
     ...reminder,
   };
 }

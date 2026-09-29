@@ -8,3 +8,5 @@ test-results
 *.log
 .idea
 .vscode
+.env
+.pgdata

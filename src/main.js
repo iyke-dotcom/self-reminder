@@ -8,6 +8,14 @@ import { downloadIcs } from "./modules/ics.js";
 import { parseNaturalDate } from "./utils/naturalDate.js";
 import { createI18n } from "./i18n.js";
 import {
+  DEFAULT_API_URL,
+  getAuth,
+  login as syncLogin,
+  logout as syncLogout,
+  register as syncRegister,
+  syncNow,
+} from "./modules/sync.js";
+import {
   filterReminders,
   sortReminders,
   collectTags,
@@ -230,6 +238,57 @@ function init({ store, migrated }) {
   const nlDateInput = document.getElementById("nl-date");
   const nlApplyBtn = document.getElementById("nl-apply");
 
+  const syncApi = document.getElementById("sync-api");
+  const syncUsername = document.getElementById("sync-username");
+  const syncPassword = document.getElementById("sync-password");
+  const syncStatus = document.getElementById("sync-status");
+  const syncRegisterBtn = document.getElementById("sync-register");
+  const syncLoginBtn = document.getElementById("sync-login");
+  const syncNowBtn = document.getElementById("sync-now");
+  const syncLogoutBtn = document.getElementById("sync-logout");
+
+  let syncTimer = null;
+
+  function accountApiUrl() {
+    return String(syncApi.value || getAuth().apiUrl || DEFAULT_API_URL);
+  }
+
+  function updateSyncStatus() {
+    const auth = getAuth();
+    syncStatus.textContent = auth.username
+      ? t("loggedInAs", { username: auth.username })
+      : t("notLoggedIn");
+    syncLogoutBtn.disabled = !auth.username;
+  }
+
+  async function runSync(quiet = false) {
+    const auth = getAuth();
+    if (!auth.token) {
+      if (!quiet) syncStatus.textContent = t("notLoggedIn");
+      return;
+    }
+    if (!navigator.onLine) {
+      if (!quiet)
+        syncStatus.textContent = t("syncFailed", { reason: "offline" });
+      return;
+    }
+    syncStatus.textContent = t("syncing");
+    try {
+      const result = await syncNow({ store, apiUrl: accountApiUrl() });
+      syncStatus.textContent = result.synced
+        ? t("synced", { count: result.count })
+        : t("notLoggedIn");
+    } catch (error) {
+      syncStatus.textContent = t("syncFailed", { reason: error.message });
+    }
+  }
+
+  function queueSync() {
+    if (!getAuth().token) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => runSync(true), 1500);
+  }
+
   function applySettingsUi() {
     const settings = getSettings();
     notifToggle.checked = Boolean(settings.notifications);
@@ -314,6 +373,50 @@ function init({ store, migrated }) {
   });
 
   applySettingsUi();
+
+  syncApi.value = getAuth().apiUrl || DEFAULT_API_URL;
+  updateSyncStatus();
+
+  async function submitAuth(action) {
+    const username = syncUsername.value.trim();
+    const password = syncPassword.value;
+    if (!username || !password) {
+      syncStatus.textContent = t("syncFailed", {
+        reason: "username/password missing",
+      });
+      return;
+    }
+    const disable = (flag) => {
+      syncRegisterBtn.disabled = flag;
+      syncLoginBtn.disabled = flag;
+    };
+    disable(true);
+    try {
+      await action({ apiUrl: accountApiUrl(), username, password });
+      syncUsername.value = "";
+      syncPassword.value = "";
+      updateSyncStatus();
+      await runSync();
+    } catch (error) {
+      syncStatus.textContent = t("syncFailed", { reason: error.message });
+    } finally {
+      disable(false);
+    }
+  }
+
+  syncRegisterBtn.addEventListener("click", () => submitAuth(syncRegister));
+  syncLoginBtn.addEventListener("click", () => submitAuth(syncLogin));
+  syncNowBtn.addEventListener("click", () => runSync());
+  syncLogoutBtn.addEventListener("click", () => {
+    syncLogout();
+    updateSyncStatus();
+  });
+
+  store.subscribe(queueSync);
+  window.addEventListener("online", () => runSync(true));
+  window.addEventListener("offline", () => {
+    syncStatus.textContent = t("syncFailed", { reason: "offline" });
+  });
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

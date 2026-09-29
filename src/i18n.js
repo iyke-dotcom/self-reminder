@@ -15,6 +15,11 @@ const CATALOG = {
     nlDateMissing:
       'Could not understand that date. Try "tomorrow 9am" or "in 2 hours".',
     theme: "Theme",
+    syncing: "Syncing…",
+    synced: "Synced {count} reminders",
+    syncFailed: "Sync failed: {reason}",
+    loggedInAs: "Logged in as {username}",
+    notLoggedIn: "Not logged in",
   },
   fr: {
     appName: "Self Reminder",
@@ -31,6 +36,11 @@ const CATALOG = {
     migrated: "Données anciennes migrées vers le nouveau moteur de stockage",
     nlDateMissing: 'Date incomprise. Essayez "demain 9h" ou "dans 2 heures".',
     theme: "Thème",
+    syncing: "Synchronisation…",
+    synced: "{count} rappels synchronisés",
+    syncFailed: "Échec de synchronisation : {reason}",
+    loggedInAs: "Connecté en tant que {username}",
+    notLoggedIn: "Non connecté",
   },
 };
 

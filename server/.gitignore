@@ -1,0 +1,9 @@
+# Runtime environment (never commit real secrets)
+.env
+
+# PGlite data directory
+.pgdata/
+
+# Node
+node_modules/
+dist/
