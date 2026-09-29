@@ -1,3 +1,5 @@
+import { computeNextDate } from "../reminders/recurrence.js";
+
 const DUE_BEEP =
   "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAA=";
 
@@ -14,12 +16,22 @@ export function startDueChecker({
 }) {
   function tick() {
     store.getState().reminders.forEach((reminder) => {
+      if (reminder.done) return;
+
       const dueAt = new Date(reminder.date).getTime();
-      if (!reminder.notified && dueAt - now() <= 0) {
-        store.markNotified(reminder.id);
+      if (reminder.notified || dueAt - now() > 0) return;
+
+      if (reminder.recurring) {
+        const next = computeNextDate(reminder.date, reminder.recurring, now());
+        store.reschedule(reminder.id, next);
         onDue(reminder);
         playBeep();
+        return;
       }
+
+      store.markNotified(reminder.id);
+      onDue(reminder);
+      playBeep();
     });
   }
 

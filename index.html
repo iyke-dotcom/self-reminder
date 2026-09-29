@@ -7,19 +7,134 @@
   </head>
   <body>
     <main class="container">
-      <h1>Self Reminder</h1>
+      <header class="app-header">
+        <h1>Self Reminder</h1>
+        <p class="tagline">Capture it, forget it, get reminded on time.</p>
+      </header>
 
-      <form id="reminder-form" class="form">
-        <input type="text" id="title" placeholder="What do you want to remember?" required>
-        <input type="datetime-local" id="datetime" required>
-        <button type="submit">Add Reminder</button>
+      <form id="reminder-form" class="form" autocomplete="off">
+        <div class="form-row">
+          <input
+            id="title"
+            type="text"
+            placeholder="What do you want to remember?"
+            aria-label="Reminder title"
+            required
+          />
+          <input
+            id="datetime"
+            type="datetime-local"
+            aria-label="Date and time"
+            required
+          />
+        </div>
+        <div class="form-row form-row--inline">
+          <select id="priority" aria-label="Priority">
+            <option value="low">Low priority</option>
+            <option value="medium" selected>Medium priority</option>
+            <option value="high">High priority</option>
+          </select>
+          <input
+            id="tags"
+            type="text"
+            placeholder="Tags (comma separated)"
+            aria-label="Tags"
+          />
+          <select id="recurring" aria-label="Repeat">
+            <option value="">Doesn't repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+          <input
+            id="interval"
+            type="number"
+            min="1"
+            value="1"
+            aria-label="Repeat interval"
+            title="Repeat every N days/weeks/months"
+            class="interval-input"
+          />
+        </div>
+        <button type="submit" class="primary">Add Reminder</button>
       </form>
 
-      <ul id="reminder-list" class="list"></ul>
-      <p id="empty-state" class="empty">No reminders yet. Add one above.</p>
+      <section class="toolbar" aria-label="Reminder tools">
+        <input
+          id="search"
+          type="search"
+          placeholder="Search reminders (press /)"
+          aria-label="Search reminders"
+        />
+        <div class="filters" role="group" aria-label="Filter reminders">
+          <button class="filter-btn is-active" data-status="all">All</button>
+          <button class="filter-btn" data-status="active">Active</button>
+          <button class="filter-btn" data-status="done">Done</button>
+          <button class="filter-btn" data-status="overdue">Overdue</button>
+          <button class="filter-btn" data-status="soon">Due soon</button>
+        </div>
+        <select id="sort" aria-label="Sort reminders">
+          <option value="date">Sort by date</option>
+          <option value="priority">Sort by priority</option>
+          <option value="title">Sort by title</option>
+        </select>
+      </section>
+
+      <div id="tagbar" class="tagbar" hidden></div>
+
+      <ul id="reminder-list" class="list" aria-live="polite"></ul>
+      <p id="empty-state" class="empty" hidden>
+        Nothing here yet. Add a reminder above, or adjust your filters.
+      </p>
     </main>
 
-    <div id="toast" class="toast"></div>
+    <div id="modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+        <h2 id="modal-heading">Edit Reminder</h2>
+        <form id="modal-form" autocomplete="off">
+          <label>
+            Title
+            <input id="modal-title" type="text" required />
+          </label>
+          <label>
+            Date and time
+            <input id="modal-datetime" type="datetime-local" required />
+          </label>
+          <label>
+            Priority
+            <select id="modal-priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label>
+            Tags (comma separated)
+            <input id="modal-tags" type="text" />
+          </label>
+          <label>
+            Repeat
+            <select id="modal-recurring">
+              <option value="">Doesn't repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <label>
+            Repeat interval
+            <input id="modal-interval" type="number" min="1" value="1" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="secondary" data-close>Cancel</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status"></div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

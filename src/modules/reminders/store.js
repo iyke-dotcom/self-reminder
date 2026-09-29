@@ -1,5 +1,5 @@
 export function createStore({ adapter, initial = [] }) {
-  let state = { reminders: [...initial] };
+  let state = { reminders: [...initial].map(withDefaults) };
   const listeners = new Set();
 
   function emit() {
@@ -12,6 +12,10 @@ export function createStore({ adapter, initial = [] }) {
     emit();
   }
 
+  function updateMap(mapper) {
+    setReminders(mapper(state.reminders));
+  }
+
   return {
     getState() {
       return state;
@@ -21,17 +25,68 @@ export function createStore({ adapter, initial = [] }) {
       return () => listeners.delete(listener);
     },
     addReminder(reminder) {
-      setReminders([...state.reminders, reminder]);
+      setReminders([...state.reminders, withDefaults(reminder)]);
+    },
+    updateReminder(id, patch) {
+      updateMap((items) =>
+        items.map((item) =>
+          item.id === id ? withDefaults({ ...item, ...patch, id }) : item,
+        ),
+      );
     },
     deleteReminder(id) {
-      setReminders(state.reminders.filter((item) => item.id !== id));
+      updateMap((items) => items.filter((item) => item.id !== id));
+    },
+    toggleDone(id) {
+      updateMap((items) =>
+        items.map((item) =>
+          item.id === id ? { ...item, done: !item.done } : item,
+        ),
+      );
     },
     markNotified(id) {
-      setReminders(
-        state.reminders.map((item) =>
+      updateMap((items) =>
+        items.map((item) =>
           item.id === id ? { ...item, notified: true } : item,
         ),
       );
     },
+    reschedule(id, nextDate) {
+      updateMap((items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                date: new Date(nextDate).toISOString(),
+                notified: false,
+              }
+            : item,
+        ),
+      );
+    },
+    snooze(id, amountMs) {
+      updateMap((items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                date: new Date(Date.now() + amountMs).toISOString(),
+                notified: false,
+              }
+            : item,
+        ),
+      );
+    },
+  };
+}
+
+function withDefaults(reminder) {
+  return {
+    notified: false,
+    done: false,
+    priority: "medium",
+    tags: [],
+    recurring: null,
+    ...reminder,
   };
 }
