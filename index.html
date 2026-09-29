@@ -95,6 +95,14 @@
       <section class="settings" aria-label="Settings">
         <h2>Notifications &amp; settings</h2>
         <label class="setting">
+          <span>Theme</span>
+          <select id="theme-select" aria-label="Theme">
+            <option value="system">System</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+        <label class="setting">
           <span>Enable system notifications</span>
           <input id="notif-enabled" type="checkbox" />
         </label>
@@ -109,8 +117,14 @@
         <div class="backup-actions">
           <button id="export-backup" type="button" class="btn">Export backup</button>
           <button id="import-backup" type="button" class="btn">Import backup</button>
+          <button id="export-ics" type="button" class="btn">Export calendar (.ics)</button>
           <input id="import-file" type="file" accept="application/json,.json" hidden />
         </div>
+        <label class="setting nl-setting">
+          <span>Quick date: "tomorrow 9am", "in 2 hours", "next monday"</span>
+          <input id="nl-date" type="text" placeholder="Try: tomorrow 9am" />
+          <button id="nl-apply" type="button" class="btn">Fill date</button>
+        </label>
       </section>
     </main>
 

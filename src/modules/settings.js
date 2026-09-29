@@ -3,7 +3,7 @@ const SETTINGS_KEY = "self-reminder.settings";
 export const DEFAULT_SETTINGS = {
   sound: true,
   preReminderMinutes: 0,
-  theme: "dark",
+  theme: "system",
 };
 
 let cached = null;

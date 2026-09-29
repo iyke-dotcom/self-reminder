@@ -4,6 +4,9 @@ import { createStore } from "./modules/reminders/store.js";
 import { createLocalStorageAdapter } from "./modules/reminders/storage.js";
 import { createIndexedDbAdapter } from "./modules/reminders/indexeddb.js";
 import { downloadBackup, parseBackup } from "./modules/backup.js";
+import { downloadIcs } from "./modules/ics.js";
+import { parseNaturalDate } from "./utils/naturalDate.js";
+import { createI18n } from "./i18n.js";
 import {
   filterReminders,
   sortReminders,
@@ -37,6 +40,25 @@ const tagbar = document.getElementById("tagbar");
 const searchInput = document.getElementById("search");
 const sortSelect = document.getElementById("sort");
 const view = createView();
+const { t } = createI18n("en");
+
+function resolveTheme(theme) {
+  if (theme === "light" || theme === "dark") return theme;
+  return window.matchMedia("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = resolveTheme(getSettings().theme);
+}
+
+applyTheme();
+window
+  .matchMedia("(prefers-color-scheme: light)")
+  .addEventListener("change", () => {
+    if (getSettings().theme === "system") applyTheme();
+  });
 
 async function boot() {
   let reminders = [];
@@ -65,7 +87,7 @@ async function boot() {
 
 function init({ store, migrated }) {
   if (migrated) {
-    showToast(toastEl, "Legacy data migrated to the new storage engine");
+    showToast(toastEl, t("migrated"));
   }
 
   function visibleReminders() {
@@ -89,7 +111,7 @@ function init({ store, migrated }) {
       emptyEl,
       onDelete: (id) => {
         store.deleteReminder(id);
-        showToast(toastEl, "Reminder deleted");
+        showToast(toastEl, t("reminderDeleted"));
       },
       onToggle: (id) => store.toggleDone(id),
       onEdit: (reminder) =>
@@ -98,7 +120,7 @@ function init({ store, migrated }) {
           reminder,
           onEdit: (patch) => {
             store.updateReminder(reminder.id, patch);
-            showToast(toastEl, "Reminder updated");
+            showToast(toastEl, t("reminderUpdated"));
           },
         }),
     });
@@ -128,7 +150,7 @@ function init({ store, migrated }) {
     onAdd: (data) => {
       try {
         store.addReminder(createReminder(data));
-        showToast(toastEl, "Reminder added");
+        showToast(toastEl, t("reminderAdded"));
       } catch (error) {
         showToast(toastEl, error.message, { isDue: true });
       }
@@ -178,10 +200,10 @@ function init({ store, migrated }) {
             label: "Snooze 5 min",
             onClick: () => {
               store.snooze(reminder.id, 5 * 60 * 1000);
-              showToast(toastEl, "Reminder snoozed for 5 minutes");
+              showToast(toastEl, t("snoozed"));
             },
           };
-      showToast(toastEl, `Reminder: ${reminder.title}`, {
+      showToast(toastEl, t("reminderDue", { title: reminder.title }), {
         isDue: true,
         action,
       });
@@ -203,13 +225,39 @@ function init({ store, migrated }) {
   const exportBtn = document.getElementById("export-backup");
   const importBtn = document.getElementById("import-backup");
   const importFile = document.getElementById("import-file");
+  const exportIcsBtn = document.getElementById("export-ics");
+  const themeSelect = document.getElementById("theme-select");
+  const nlDateInput = document.getElementById("nl-date");
+  const nlApplyBtn = document.getElementById("nl-apply");
 
   function applySettingsUi() {
     const settings = getSettings();
     notifToggle.checked = Boolean(settings.notifications);
     soundToggle.checked = settings.sound;
     preReminderInput.value = settings.preReminderMinutes;
+    themeSelect.value = settings.theme || "system";
   }
+
+  themeSelect.addEventListener("change", () => {
+    setSettings({ theme: themeSelect.value });
+    applyTheme();
+  });
+
+  nlApplyBtn.addEventListener("click", () => {
+    const value = parseNaturalDate(nlDateInput.value);
+    if (value) {
+      document.getElementById("datetime").value = value;
+      showToast(toastEl, t("reminderAdded") + " ✓");
+    } else {
+      showToast(toastEl, t("nlDateMissing"), { isDue: true });
+    }
+  });
+  nlDateInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      nlApplyBtn.click();
+    }
+  });
 
   notifToggle.addEventListener("change", async () => {
     const wantEnabled = notifToggle.checked;
@@ -218,7 +266,7 @@ function init({ store, migrated }) {
       const result = await requestNotificationPermission();
       if (result !== "granted") {
         notifToggle.checked = false;
-        showToast(toastEl, "Notifications blocked in browser settings", {
+        showToast(toastEl, t("notifBlocked"), {
           isDue: true,
         });
         return;
@@ -242,7 +290,12 @@ function init({ store, migrated }) {
       store.getState().reminders,
       `self-reminder-backup-${Date.now()}.json`,
     );
-    showToast(toastEl, "Backup downloaded");
+    showToast(toastEl, t("backupDownloaded"));
+  });
+
+  exportIcsBtn.addEventListener("click", () => {
+    downloadIcs(store.getState().reminders, "self-reminder.ics");
+    showToast(toastEl, `${t("backupDownloaded")} (.ics)`);
   });
 
   importBtn.addEventListener("click", () => importFile.click());
@@ -253,7 +306,7 @@ function init({ store, migrated }) {
       const { reminders } = parseBackup(await file.text());
       store.replaceAll(reminders);
       importFile.value = "";
-      showToast(toastEl, `Imported ${reminders.length} reminders`);
+      showToast(toastEl, t("backupImported", { count: reminders.length }));
     } catch (error) {
       importFile.value = "";
       showToast(toastEl, error.message, { isDue: true });

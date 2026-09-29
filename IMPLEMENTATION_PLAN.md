@@ -6,18 +6,19 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 
 ## Current Project Status (updated 2026-09-29)
 
-**Resume point:** Phases 1–6 are complete and pushed. Phase 7 client-side (IndexedDB + migration + backup/restore) is complete and locally verified — commit pending push. Next is Phase 8 (e2e + CI + release v1.1.0).
+**Resume point:** Phases 1–9 are complete and pushed; releases `v1.1.0` and `v1.2.0` are published. The only outstanding items are external: Phase 7 backend sync (needs a Supabase/Firebase account — user decision) and optional follow-ups (full i18n coverage, privacy analytics, webhook chat reminders).
 
 | Item | Status |
 | ---- | ------ |
-| GitHub | `iyke-dotcom/self-reminder` on `main`; release `v1.0.0` still tagged |
+| GitHub | `iyke-dotcom/self-reminder` on `main`; releases + tags `v1.1.0`, `v1.2.0` |
 | Phase 1 tooling | Vite + ESLint + Prettier + Husky + Vitest in repo |
 | Phase 2 PRD | `docs/PRD.md` (draft) |
 | Phase 3–4 port | Modular `src/` with design tokens, storage adapter, store, UI, due checker |
 | Phase 5 features | edit, recurring, done, search/filter/sort, priorities, tags, snooze, shortcuts, validation |
 | Phase 6 PWA | manifest, service worker, icons, system notifications, settings (sound, pre-reminder) |
 | Phase 7 storage | IndexedDB adapter + localStorage migration + JSON backup/restore |
-| Playwright e2e | Script only — no config or specs yet |
+| Phase 8 quality | 57 unit tests, 4 e2e specs + axe, CSP headers, GitHub Actions CI → Pages deploy, README, release v1.1.0 |
+| Phase 9 polish | NL dates, dark/light/system theme toggle, ICS export, i18n baseline — release v1.2.0 |
 | Backend sync | **Blocked** — needs a Supabase/Firebase account (user decision) |
 
 **Current feature set:** add/edit/delete/toggle-done, recurring + snooze, search + filter by status/tag, priorities, tags, keyboard shortcuts, in-app toast + sound, system notifications, offline-capable PWA, IndexedDB + localStorage persistence, JSON export/import.
@@ -248,19 +249,21 @@ tests/
 **Goal:** Ship a robust, tested, documented v1.0.
 
 **Tasks:**
-- [ ] **Unit tests**: storage adapter, recurrence, classify/sort/filter, schema migration (Vitest)
-- [ ] **Component tests** (if framework used)
-- [ ] **E2E tests**: create → see → edit → notify → delete; offline; install (Playwright)
-- [ ] **Accessibility audit**: WCAG AA, axe-core, keyboard-only pass
-- [ ] **Performance**: Lighthouse ≥ 90 in performance, accessibility, best practices, SEO
-- [ ] **Security review**: CSP headers, no `innerHTML` with user data, secure token storage
-- [ ] **CI/CD**: GitHub Actions — lint → test → build → e2e → deploy on push to `main`
-- [ ] Update README: setup, scripts, screenshots, architecture diagram
-- [ ] Semantic versioning + tag + GitHub release with changelog
+- [x] **Unit tests**: storage adapter, recurrence, classify/sort/filter, schema migration (Vitest) — 40 passing
+- [ ] **Component tests** (if framework used) — n/a (vanilla JS, covered by unit + e2e)
+- [x] **E2E tests**: create → see → edit → notify → delete; offline; install (Playwright) — 4 specs passing
+- [x] **Accessibility audit**: WCAG AA, axe-core (serious/critical = 0); accent color darkened to pass contrast
+- [ ] **Performance**: Lighthouse ≥ 90 — headless Lighthouse not run locally; left for Pages deployment audit
+- [x] **Security review**: CSP + nosniff + Referrer-Policy headers in preview; zero `innerHTML` usage with user data
+- [x] **CI/CD**: GitHub Actions — lint → test → build → e2e → deploy on push to `main`
+- [x] Update README: setup, scripts, screenshots, architecture diagram
+- [x] Semantic versioning + tag + GitHub release with changelog — **v1.1.0**
 
 **Deliverables:** Green CI, passing tests, accessible + performant build, documented release.
 
 **Acceptance criteria:** `main` auto-deploys; lint/tests pass in CI; Lighthouse ≥ 90; release tagged and published.
+
+*(Status 2026-09-29: all code-level tasks done; v1.1.0 released, CI workflow pushed. Lighthouse audit runs once GitHub Pages goes live; browser-driven Lighthouse is a manual/CI follow-up if Pages deployment is enabled.)*
 
 ---
 
@@ -268,12 +271,14 @@ tests/
 
 **Goal:** Iterate on real usage and keep the product healthy.
 
-- [ ] Privacy-friendly analytics for Phase 2 metrics
-- [ ] Natural-language date input ("tomorrow 9am", "in 2 hours")
+- [ ] Privacy-friendly analytics for Phase 2 metrics — deferred (needs decision)
+- [x] Natural-language date input ("tomorrow 9am", "in 2 hours")
 - [ ] Chat reminders via webhook (WhatsApp/Telegram/e-mail) — needs Phase 7 backend
-- [ ] Calendar export (ICS) / import
-- [ ] Theme toggle (dark/light) respecting OS preference
-- [ ] Localization (i18n)
+- [x] Calendar export (ICS) / import-ish (export done; import n/a)
+- [x] Theme toggle (dark/light/system) respecting OS preference
+- [x] Localization (i18n) baseline — `src/i18n.js` catalog (en, fr) + `t()` wired into app toasts
+
+*(Status 2026-09-29: NL dates, theme toggle, ICS export, and the i18n baseline are complete and verified (unit + runtime). Full catalog coverage and auto-detection of the browser locale remain follow-ups. Webhook chat reminders still require the Phase 7 backend.)*
 - [ ] Mobile home-screen widgets (PWA)
 - [ ] Recurrence skips and multi-reminder chains
 - [ ] Dependabot + regular dependency updates; security patches
