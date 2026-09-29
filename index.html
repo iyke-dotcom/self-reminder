@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="description" content="A lightweight browser-based reminder app." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Self Reminder</title>
   </head>
   <body>
@@ -86,6 +91,22 @@
       <p id="empty-state" class="empty" hidden>
         Nothing here yet. Add a reminder above, or adjust your filters.
       </p>
+
+      <section class="settings" aria-label="Settings">
+        <h2>Notifications &amp; settings</h2>
+        <label class="setting">
+          <span>Enable system notifications</span>
+          <input id="notif-enabled" type="checkbox" />
+        </label>
+        <label class="setting">
+          <span>Play sound when a reminder fires</span>
+          <input id="sound-enabled" type="checkbox" />
+        </label>
+        <label class="setting">
+          <span>Remind me this many minutes before</span>
+          <input id="pre-reminder" type="number" min="0" max="1440" step="1" />
+        </label>
+      </section>
     </main>
 
     <div id="modal" class="modal" hidden>

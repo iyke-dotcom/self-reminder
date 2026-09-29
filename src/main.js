@@ -9,6 +9,16 @@ import {
 } from "./modules/reminders/selectors.js";
 import { showToast } from "./modules/notifications/toast.js";
 import { startDueChecker } from "./modules/notifications/dueChecker.js";
+import {
+  effectiveDueDate,
+  getSettings,
+  setSettings,
+} from "./modules/settings.js";
+import {
+  notificationPermission,
+  notify,
+  requestNotificationPermission,
+} from "./modules/notifications/systemNotifications.js";
 import { bindForm } from "./modules/ui/form.js";
 import { renderList } from "./modules/ui/list.js";
 import { openEditModal } from "./modules/ui/modal.js";
@@ -120,7 +130,14 @@ document.addEventListener("keydown", (event) => {
 
 startDueChecker({
   store,
+  effectiveAt: (reminder) => effectiveDueDate(reminder.date),
+  soundEnabled: () => getSettings().sound,
   onDue: (reminder) => {
+    if (getSettings().notifications && notificationPermission() === "granted") {
+      notify(reminder.title, {
+        body: `Due ${new Date(reminder.date).toLocaleString()}`,
+      });
+    }
     const action = reminder.recurring
       ? null
       : {
@@ -145,5 +162,52 @@ document.querySelectorAll(".filter-btn").forEach((btn) => {
     });
   });
 });
+
+const notifToggle = document.getElementById("notif-enabled");
+const soundToggle = document.getElementById("sound-enabled");
+const preReminderInput = document.getElementById("pre-reminder");
+
+function applySettingsUi() {
+  const settings = getSettings();
+  notifToggle.checked = Boolean(settings.notifications);
+  soundToggle.checked = settings.sound;
+  preReminderInput.value = settings.preReminderMinutes;
+}
+
+notifToggle.addEventListener("change", async () => {
+  const wantEnabled = notifToggle.checked;
+  const current = notificationPermission();
+  if (wantEnabled && current !== "granted") {
+    const result = await requestNotificationPermission();
+    if (result !== "granted") {
+      notifToggle.checked = false;
+      showToast(toastEl, "Notifications blocked in browser settings", {
+        isDue: true,
+      });
+      return;
+    }
+  }
+  setSettings({ notifications: wantEnabled });
+});
+
+soundToggle.addEventListener("change", () => {
+  setSettings({ sound: soundToggle.checked });
+});
+
+preReminderInput.addEventListener("change", () => {
+  const minutes = Math.max(0, Number(preReminderInput.value) || 0);
+  preReminderInput.value = minutes;
+  setSettings({ preReminderMinutes: minutes });
+});
+
+applySettingsUi();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.error("Service worker registration failed", error);
+    });
+  });
+}
 
 render();

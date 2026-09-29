@@ -13,25 +13,27 @@ export function startDueChecker({
   onDue,
   intervalMs = 2000,
   now = () => Date.now(),
+  effectiveAt = (reminder) => new Date(reminder.date).getTime(),
+  soundEnabled = () => true,
 }) {
   function tick() {
     store.getState().reminders.forEach((reminder) => {
       if (reminder.done) return;
 
-      const dueAt = new Date(reminder.date).getTime();
+      const dueAt = effectiveAt(reminder);
       if (reminder.notified || dueAt - now() > 0) return;
 
       if (reminder.recurring) {
         const next = computeNextDate(reminder.date, reminder.recurring, now());
         store.reschedule(reminder.id, next);
         onDue(reminder);
-        playBeep();
+        if (soundEnabled()) playBeep();
         return;
       }
 
       store.markNotified(reminder.id);
       onDue(reminder);
-      playBeep();
+      if (soundEnabled()) playBeep();
     });
   }
 
