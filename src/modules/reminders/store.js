@@ -9,6 +9,11 @@ export function createStore({ adapter, initial = [] }) {
   function setReminders(reminders) {
     state = { reminders };
     adapter.save(reminders);
+    if (adapter.saveAsync) {
+      adapter.saveAsync(reminders).catch((error) => {
+        console.error("Async persistence failed", error);
+      });
+    }
     emit();
   }
 
@@ -26,6 +31,9 @@ export function createStore({ adapter, initial = [] }) {
     },
     addReminder(reminder) {
       setReminders([...state.reminders, withDefaults(reminder)]);
+    },
+    replaceAll(reminders) {
+      setReminders(reminders.map(withDefaults));
     },
     updateReminder(id, patch) {
       updateMap((items) =>

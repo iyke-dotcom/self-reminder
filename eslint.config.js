@@ -5,7 +5,7 @@ import globals from "globals";
 export default [
   { ignores: ["dist", "node_modules", "playwright-report", "test-results"] },
   {
-    files: ["**/*.js"],
+    files: ["**/*.js", "**/*.mjs"],
     ...js.configs.recommended,
     rules: {
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],

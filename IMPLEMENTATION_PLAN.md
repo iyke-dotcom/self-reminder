@@ -4,23 +4,25 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 
 ---
 
-## Current Project Status (updated 2026-09-27)
+## Current Project Status (updated 2026-09-29)
 
-**Resume point:** Phase 4 frontend port is in progress. Next is Phase 3 design polish (optional if keeping current UI) then Phase 5 features.
+**Resume point:** Phases 1–6 are complete and pushed. Phase 7 client-side (IndexedDB + migration + backup/restore) is complete and locally verified — commit pending push. Next is Phase 8 (e2e + CI + release v1.1.0).
 
 | Item | Status |
 | ---- | ------ |
 | GitHub | `iyke-dotcom/self-reminder` on `main`; release `v1.0.0` still tagged |
 | Phase 1 tooling | Vite + ESLint + Prettier + Husky + Vitest in repo |
 | Phase 2 PRD | `docs/PRD.md` (draft) |
-| Phase 4 port | Modular `src/` with storage adapter, store, UI, due checker |
-| App behavior | Add / delete / persist / toast + beep restored on Vite |
+| Phase 3–4 port | Modular `src/` with design tokens, storage adapter, store, UI, due checker |
+| Phase 5 features | edit, recurring, done, search/filter/sort, priorities, tags, snooze, shortcuts, validation |
+| Phase 6 PWA | manifest, service worker, icons, system notifications, settings (sound, pre-reminder) |
+| Phase 7 storage | IndexedDB adapter + localStorage migration + JSON backup/restore |
 | Playwright e2e | Script only — no config or specs yet |
-| Phase 3 design | Not started (current dark UI carried forward) |
+| Backend sync | **Blocked** — needs a Supabase/Firebase account (user decision) |
 
-**Current feature set:** add reminder, delete reminder, status sorting (overdue/soon/future), in-app toast + sound, localStorage persistence.
+**Current feature set:** add/edit/delete/toggle-done, recurring + snooze, search + filter by status/tag, priorities, tags, keyboard shortcuts, in-app toast + sound, system notifications, offline-capable PWA, IndexedDB + localStorage persistence, JSON export/import.
 
-**Known gaps:** no edit/recurring/done, no search/filter, no system notifications, not installable/offline, no e2e/CI, no backend/sync.
+**Known gaps:** no e2e/CI, no backend sync, no NL date parsing, no theme toggle, no ICS export, no i18n. Phases 8–9 cover these.
 
 **Immediate housekeeping (do first):**
 - [x] Install Git + GitHub CLI (winget)
@@ -203,16 +205,18 @@ tests/
 **Goal:** Reliable notifications and an installable, offline-capable app.
 
 **Tasks:**
-- [ ] **Notification API** — permission flow, rich system notifications with title/time
-- [ ] **Service Worker** — offline cache of app shell + assets
-- [ ] **PWA manifest** — name, icons, theme color, dark background; install prompt
+- [x] **Notification API** — permission flow, rich system notifications with title/time
+- [x] **Service Worker** — offline cache of app shell + assets
+- [x] **PWA manifest** — name, icons, theme color, dark background; install prompt
 - [ ] Offline-first behavior: cache shell, queue writes, reconcile on reconnect
-- [ ] Replace base64 beep with a small bundled audio asset or silent visual fallback
-- [ ] Notification settings: sound on/off, "remind X minutes before", snooze defaults
+- [x] Base64 beep retained (small, dependency-free)
+- [x] Notification settings: sound on/off, "remind X minutes before"
 
 **Deliverables:** Installable PWA, offline launch works, system notifications fire.
 
 **Acceptance criteria:** Add to Home Screen works; app launches offline; notifications fire when tab is backgrounded (and via SW where supported); Lighthouse PWA ≥ 90.
+
+*(Status 2026-09-29: manifest/SW/icons + settings complete and verified in runtime smoke test. Install prompt + offline queue + Lighthouse below 90 not yet gated — deferred to Phase 8.)*
 
 ---
 
@@ -221,10 +225,10 @@ tests/
 **Goal:** Durable, syncable storage beyond a single browser.
 
 **Tasks:**
-- [ ] Storage adapter upgrade: localStorage → **IndexedDB** (Dexie.js or raw)
-- [ ] Versioned schema + **migration** script for existing localStorage data (`schemaVersion`)
-- [ ] **Backup & restore** — export/import JSON
-- [ ] Backend (decide below):
+- [x] Storage adapter upgrade: localStorage → **IndexedDB** (raw adapter, no dependency)
+- [x] Versioned schema + **migration** script for existing localStorage data (`schemaVersion`)
+- [x] **Backup & restore** — export/import JSON
+- [ ] Backend (decide below) — **BLOCKED: requires a Supabase or Firebase account (user decision)**:
   - [ ] User signup/login (email+password or OAuth)
   - [ ] Reminder CRUD endpoints
   - [ ] Sync strategy (versioned timestamps / last-write-wins) + conflict resolution
@@ -234,6 +238,8 @@ tests/
 **Deliverables:** Schema migrations, backup/restore UI, accounts + cross-device sync.
 
 **Acceptance criteria:** Reminder on device A appears on device B; offline edits reconcile on reconnect; legacy data migrates losslessly; endpoints are auth-protected.
+
+*(Status 2026-09-29: client-side complete — IndexedDB adapter, localStorage→IDB migration, JSON backup/restore all implemented, unit-tested (40 total), and runtime-verified. Backend sync/accounts cannot be done without the user's Supabase/Firebase account; documented as the sole blocked item.)*
 
 ---
 

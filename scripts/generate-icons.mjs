@@ -15,7 +15,8 @@ function crc32(buf) {
     table[n] = c >>> 0;
   }
   let crc = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  for (let i = 0; i < buf.length; i++)
+    crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
@@ -56,14 +57,21 @@ function encodePng(size, pixelFn) {
 }
 
 function roundedSquare(x, y, size, radius, safe = 0) {
-  const s = size - 2 * safe;
   const min = safe;
   const max = size - safe;
-  const cx = x < min + radius ? min + radius : x > max - radius ? max - radius : x;
-  const cy = y < min + radius ? min + radius : y > max - radius ? max - radius : y;
+  const cx =
+    x < min + radius ? min + radius : x > max - radius ? max - radius : x;
+  const cy =
+    y < min + radius ? min + radius : y > max - radius ? max - radius : y;
   const dx = x - cx;
   const dy = y - cy;
-  return dx * dx + dy * dy <= radius * radius && x >= min && x <= max && y >= min && y <= max;
+  return (
+    dx * dx + dy * dy <= radius * radius &&
+    x >= min &&
+    x <= max &&
+    y >= min &&
+    y <= max
+  );
 }
 
 function checkmarkInside(x, y, size) {
@@ -85,7 +93,15 @@ function checkmarkInside(x, y, size) {
 
 function makeIcon(size) {
   return encodePng(size, (x, y) => {
-    if (!roundedSquare(x, y, size, Math.round(size * 0.22), Math.round(size * 0.04))) {
+    if (
+      !roundedSquare(
+        x,
+        y,
+        size,
+        Math.round(size * 0.22),
+        Math.round(size * 0.04),
+      )
+    ) {
       return [0, 0, 0, 0];
     }
     const t = (x + y) / (2 * (size - 1));

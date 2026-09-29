@@ -478,3 +478,24 @@ body {
   border: 1px solid #ddd;
   font-size: 0.92rem;
 }
+
+.backup-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: background 120ms ease;
+}
+
+.btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
