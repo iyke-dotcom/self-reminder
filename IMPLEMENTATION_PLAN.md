@@ -4,32 +4,30 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 
 ---
 
-## Current Project Status (from folder review)
+## Current Project Status (updated 2026-09-27)
 
-**Reviewed: `C:\Users\HP\Documents\Default Project\Self Reminder`**
+**Resume point:** Phase 4 frontend port is in progress. Next is Phase 3 design polish (optional if keeping current UI) then Phase 5 features.
 
 | Item | Status |
 | ---- | ------ |
-| `index.html` (757 B) | Done — single-page structure, add form + list |
-| `style.css` (2.3 KB) | Done — dark gradient background, status colors (note: uncommitted change) |
-| `app.js` (3 KB) | Done — add/delete, localStorage persistence, toast + beep on due |
-| `README.md` (1.6 KB) | Done — committed, pushed |
-| `IMPLEMENTATION_PLAN.md` | Untracked — this file |
-| Git repo | `main` branch, 2 commits, remote `origin` set |
-| GitHub | Repo `iyke-dotcom/self-reminder`, logged in as `iyke-dotcom`, release `v1.0.0` |
-| Tooling | Git + GitHub CLI installed. **Node.js NOT installed** |
-| Uncommitted work | `style.css` (dark background) needs a commit |
+| GitHub | `iyke-dotcom/self-reminder` on `main`; release `v1.0.0` still tagged |
+| Phase 1 tooling | Vite + ESLint + Prettier + Husky + Vitest in repo |
+| Phase 2 PRD | `docs/PRD.md` (draft) |
+| Phase 4 port | Modular `src/` with storage adapter, store, UI, due checker |
+| App behavior | Add / delete / persist / toast + beep restored on Vite |
+| Playwright e2e | Script only — no config or specs yet |
+| Phase 3 design | Not started (current dark UI carried forward) |
 
 **Current feature set:** add reminder, delete reminder, status sorting (overdue/soon/future), in-app toast + sound, localStorage persistence.
 
-**Known gaps:** no edit/recurring/done, no search/filter, no system notifications, not installable/offline, no tests, no lint, no build step, no backend/sync.
+**Known gaps:** no edit/recurring/done, no search/filter, no system notifications, not installable/offline, no e2e/CI, no backend/sync.
 
 **Immediate housekeeping (do first):**
 - [x] Install Git + GitHub CLI (winget)
 - [x] Authenticate GitHub CLI
 - [x] Init repo, create remote, push, tag `v1.0.0`
-- [ ] Commit dark-background `style.css` change (pending)
-- [ ] Commit this plan file
+- [x] Commit dark-background `style.css` change
+- [x] Commit this plan file
 
 ---
 
@@ -69,13 +67,13 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 **Goal:** A reproducible development environment with lint, tests, and build.
 
 **Tasks:**
-- [ ] Install Node.js LTS: `winget install OpenJS.NodeJS.LTS` (verify with `node -v`, `npm -v`)
-- [ ] Scaffold with Vite + vanilla JS: `npm create vite@latest . -- --template vanilla`
-- [ ] Add dev tooling: ESLint + Prettier, Husky pre-commit hooks, lint-staged
-- [ ] Add test runners: Vitest (unit), Playwright (e2e)
-- [ ] Add npm scripts: `dev`, `build`, `preview`, `lint`, `test`, `test:e2e`
-- [ ] Add `.gitignore` (node_modules, dist, logs, editor folders)
-- [ ] Pin Node version via `.nvmrc` / `engines` in package.json
+- [x] Install Node.js LTS: `winget install OpenJS.NodeJS.LTS` (verify with `node -v`, `npm -v`)
+- [x] Scaffold with Vite + vanilla JS: `npm create vite@latest . -- --template vanilla`
+- [x] Add dev tooling: ESLint + Prettier, Husky pre-commit hooks, lint-staged
+- [x] Add test runners: Vitest (unit), Playwright (e2e) — e2e config still outstanding
+- [x] Add npm scripts: `dev`, `build`, `preview`, `lint`, `test`, `test:e2e`
+- [x] Add `.gitignore` (node_modules, dist, logs, editor folders)
+- [x] Pin Node version via `.nvmrc` / `engines` in package.json
 
 **Deliverables:** Working dev server, green `npm run lint`, passing scaffold test suite.
 
@@ -88,11 +86,11 @@ Complete phased roadmap for the Self Reminder project — from current state thr
 **Goal:** Lock down the product scope before design and build.
 
 **Tasks:**
-- [ ] Define target users (personal productivity user, student, busy professional) and 1–2 personas
-- [ ] Write 3 core user stories (e.g., "As a student, I want a reminder 10 minutes before class so I don't miss it")
-- [ ] Build a feature matrix: must-have vs nice-to-have (see Phases 4–7)
-- [ ] Define success metrics (reminders created/day, notifications acknowledged, weekly return rate)
-- [ ] Decide name/branding direction
+- [x] Define target users (personal productivity user, student, busy professional) and 1–2 personas
+- [x] Write 3 core user stories (e.g., "As a student, I want a reminder 10 minutes before class so I don't miss it")
+- [x] Build a feature matrix: must-have vs nice-to-have (see Phases 4–7)
+- [x] Define success metrics (reminders created/day, notifications acknowledged, weekly return rate)
+- [x] Decide name/branding direction
 
 **Deliverables:** `PRD.md`, persona sheet, feature matrix, success metrics.
 
@@ -166,11 +164,11 @@ tests/
 ```
 
 **Tasks:**
-- [ ] Port existing logic into modules (storage, reminder model, timer/notifier, renderers)
-- [ ] Introduce a small store: `state`, `subscribe`, mutators
-- [ ] Storage adapter interface (swappable localStorage → IndexedDB later)
+- [x] Port existing logic into modules (storage, reminder model, timer/notifier, renderers)
+- [x] Introduce a small store: `state`, `subscribe`, mutators
+- [x] Storage adapter interface (swappable localStorage → IndexedDB later)
 - [ ] Move inline styles to token-driven component styles
-- [ ] Add initial unit tests for pure logic (classify, format, recurrence later)
+- [x] Add initial unit tests for pure logic (classify, format, recurrence later)
 
 **Deliverables:** Vite app, lint/format pipeline, modular structure, ported features working.
 

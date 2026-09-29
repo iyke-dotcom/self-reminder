@@ -1,24 +1,27 @@
 # Self Reminder
 
-A lightweight, browser-based reminder app that helps you remember important tasks and events. No installation required — just open `index.html` in your browser.
+A lightweight, browser-based reminder app that helps you remember important tasks and events.
 
 ## Features
 
 - Add reminders with a title and date/time
 - Automatic status colors: overdue, upcoming, and due soon
-- Browser notification with sound when a reminder is due
+- In-app toast with sound when a reminder is due
 - Reminders persist in localStorage (survive page reloads)
 - Delete reminders when no longer needed
 
 ## Getting Started
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/iyke-dotcom/self-reminder.git
-   ```
-2. Open `index.html` in any modern web browser.
+Requires Node.js 20 or later.
 
-Or just open the files directly — no build step or server required.
+```bash
+git clone https://github.com/iyke-dotcom/self-reminder.git
+cd self-reminder
+npm install
+npm run dev
+```
+
+Then open the URL Vite prints (usually `http://localhost:5173`).
 
 ## Usage
 
@@ -33,19 +36,20 @@ Reminder list statuses:
 - **Orange** — due within 5 minutes
 - **Red** — overdue
 
-## Project Structure
+## Scripts
 
-| File          | Purpose                                         |
-| ------------- | ----------------------------------------------- |
-| `index.html`  | Page structure and UI                           |
-| `style.css`   | Styling and layout                              |
-| `app.js`      | Reminder logic, persistence, and notifications  |
+| Command | Purpose |
+| ------- | ------- |
+| `npm run dev` | Local development server |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Preview the production build |
+| `npm run lint` | ESLint |
+| `npm test` | Unit tests (Vitest) |
 
 ## Tech Stack
 
-- HTML
-- CSS
-- Vanilla JavaScript
+- HTML, CSS, vanilla JavaScript
+- [Vite](https://vite.dev/) for the dev server and build
 - [localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) for data persistence
 
 ## License

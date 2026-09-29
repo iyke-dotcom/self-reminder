@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
+import globals from "globals";
 
 export default [
   { ignores: ["dist", "node_modules", "playwright-report", "test-results"] },
@@ -13,6 +14,10 @@ export default [
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
     },
   },
   prettier,
