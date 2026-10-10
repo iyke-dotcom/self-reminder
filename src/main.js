@@ -374,6 +374,95 @@ function init({ store, migrated }) {
 
   applySettingsUi();
 
+  // Login gate: wire the Sign in / Create account screen.
+  const loginScreen = document.getElementById("login-screen");
+  const appMain = document.getElementById("app-main");
+  const loginUser = document.getElementById("login-username");
+  const loginPass = document.getElementById("login-password");
+  const loginBtn = document.getElementById("login-btn");
+  const signupBtn = document.getElementById("signup-btn");
+  const loginStatus = document.getElementById("login-status");
+  const logoutBtn = document.getElementById("logout-btn");
+  const syncAccount = document.getElementById("sync-account");
+
+  const LOCAL_AUTH_KEY = "self-reminder.localAuth";
+
+  function readLocalAuth() {
+    try {
+      return JSON.parse(localStorage.getItem(LOCAL_AUTH_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function setGate(visible) {
+    if (loginScreen) loginScreen.style.display = visible ? "flex" : "none";
+    if (appMain) appMain.style.display = visible ? "none" : "block";
+    if (syncAccount) syncAccount.style.display = visible ? "none" : "block";
+    if (logoutBtn) logoutBtn.style.display = visible ? "none" : "inline-flex";
+  }
+
+  const hasSession = Boolean(getAuth().token) || Boolean(readLocalAuth());
+  setGate(!hasSession);
+
+  function busy(flag) {
+    if (loginBtn) loginBtn.disabled = flag;
+    if (signupBtn) signupBtn.disabled = flag;
+  }
+
+  async function handleAuth(action, verb, { allowLocalFallback }) {
+    const username = loginUser.value.trim();
+    const password = loginPass.value;
+    if (!username || !password) {
+      if (loginStatus)
+        loginStatus.textContent = "Enter a username and password.";
+      return;
+    }
+    if (loginStatus) loginStatus.textContent = `${verb}...`;
+    busy(true);
+    try {
+      await action({ apiUrl: accountApiUrl(), username, password });
+      localStorage.setItem(
+        LOCAL_AUTH_KEY,
+        JSON.stringify({ username, at: Date.now() }),
+      );
+      if (loginStatus) loginStatus.textContent = "";
+      setGate(false);
+      updateSyncStatus();
+    } catch (error) {
+      const unreachable = !error || error.status === undefined;
+      if (allowLocalFallback && unreachable) {
+        localStorage.setItem(
+          LOCAL_AUTH_KEY,
+          JSON.stringify({ username, at: Date.now() }),
+        );
+        if (loginStatus) loginStatus.textContent = "";
+        setGate(false);
+        updateSyncStatus();
+      } else if (loginStatus) {
+        loginStatus.textContent = error?.message || `${verb} failed.`;
+      }
+    } finally {
+      busy(false);
+    }
+  }
+
+  loginBtn?.addEventListener("click", () =>
+    handleAuth(syncLogin, "Signing in", { allowLocalFallback: true }),
+  );
+  signupBtn?.addEventListener("click", () =>
+    handleAuth(syncRegister, "Creating account", { allowLocalFallback: true }),
+  );
+  loginPass?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loginBtn?.click();
+  });
+  logoutBtn?.addEventListener("click", () => {
+    syncLogout();
+    localStorage.removeItem(LOCAL_AUTH_KEY);
+    updateSyncStatus();
+    setGate(true);
+  });
+
   syncApi.value = getAuth().apiUrl || DEFAULT_API_URL;
   updateSyncStatus();
 
