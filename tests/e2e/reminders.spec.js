@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { signupAs, unique } from "./helpers.js";
 
 test("adds, edits, toggles done, and deletes a reminder", async ({ page }) => {
-  await page.goto("/");
+  await signupAs(page, unique("rem"));
+  await page.goto("/#/app/new");
 
   await page.fill("#title", "Water the plants");
   await page.fill("#datetime", "2030-01-01T09:00");
@@ -9,6 +11,7 @@ test("adds, edits, toggles done, and deletes a reminder", async ({ page }) => {
   await page.fill("#tags", "home,chores");
   await page.click('#reminder-form button[type="submit"]');
 
+  await page.goto("/#/app/manage");
   const first = page.locator("ul.list > li").first();
   await expect(first).toContainText("Water the plants");
   await expect(first).toContainText("home");

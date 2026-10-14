@@ -51,7 +51,14 @@ export function verifyToken(token, secret) {
 }
 
 export function issueToken(user, secret) {
-  return signToken({ sub: user.id, username: user.username }, secret);
+  return signToken(
+    {
+      sub: user.id,
+      username: user.username,
+      role: user.role ?? "customer",
+    },
+    secret,
+  );
 }
 
 export function newUserId() {

@@ -18,8 +18,18 @@
       <header class="app-header">
         <h1>Self Reminder</h1>
         <p class="tagline">Capture it, forget it, get reminded on time.</p>
-      </header><div class="header-actions"><button id="logout-btn" type="button" class="btn">Logout</button></div>
+      </header><div class="header-actions"><nav class="customer-nav" aria-label="Customer"><a href="#/app">Home</a><a href="#/app/new">Add Reminder</a><a href="#/app/manage">Manage Reminders</a><a href="#/app/settings">Settings</a></nav><button id="logout-btn" type="button" class="btn">Logout</button></div>
 
+      <section id="view-home" class="view" aria-label="Customer home" hidden>
+        <h2 id="welcome-heading">Welcome</h2>
+        <p class="tagline">What would you like to do?</p>
+        <div class="login-actions">
+          <a class="primary home-link" href="#/app/new">Add Reminder</a>
+          <a class="secondary home-link" href="#/app/manage">Manage Reminders</a>
+        </div>
+      </section>
+
+      <section id="view-new" class="view" aria-label="Add reminder" hidden>
       <form id="reminder-form" class="form" autocomplete="off">
         <div class="form-row">
           <input
@@ -66,7 +76,9 @@
         </div>
         <button type="submit" class="primary">Add Reminder</button>
       </form>
+      </section>
 
+      <section id="view-manage" class="view" aria-label="Manage reminders" hidden>
       <section class="toolbar" aria-label="Reminder tools">
         <input
           id="search"
@@ -94,8 +106,9 @@
       <p id="empty-state" class="empty" hidden>
         Nothing here yet. Add a reminder above, or adjust your filters.
       </p>
+      </section>
 
-      <section class="settings" aria-label="Settings">
+      <section id="view-settings" class="view settings" aria-label="Settings" hidden>
         <h2>Notifications &amp; settings</h2>
         <label class="setting">
           <span>Theme</span>
@@ -173,6 +186,25 @@
         </div>
       </section>
     </main>
+
+    <section id="admin-main" class="container" aria-label="Admin" hidden>
+      <header class="app-header">
+        <h1>Admin</h1>
+        <p class="tagline">Users and reminders across the app.</p>
+      </header>
+      <div class="header-actions"><button id="admin-logout" type="button" class="btn">Logout</button></div>
+      <p id="admin-status" class="sync-status" role="status"></p>
+      <h2>Users</h2>
+      <div class="table-wrap"><table id="admin-users" class="admin-table" aria-label="Users">
+        <thead><tr><th>Username</th><th>Email</th><th>Name</th><th>Role</th><th>Created</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <h2>All reminders</h2>
+      <div class="table-wrap"><table id="admin-reminders" class="admin-table" aria-label="All reminders">
+        <thead><tr><th>Title</th><th>Owner</th><th>Date</th><th>Status</th><th>Done</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
 
     <div id="modal" class="modal" hidden>
       <div class="modal-backdrop" data-close></div>

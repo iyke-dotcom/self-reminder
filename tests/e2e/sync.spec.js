@@ -1,27 +1,24 @@
 import { test, expect } from "@playwright/test";
-
-const unique = (prefix) =>
-  `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-const password = "correct-horse";
+import { signupAs, unique } from "./helpers.js";
 
 test("registers, syncs across logins, and deletes via sync UI", async ({
   page,
 }) => {
   const username = unique("e2e");
-  await page.goto("/");
+  await signupAs(page, username);
 
-  // register in the account panel
-  await page.fill("#sync-username", username);
-  await page.fill("#sync-password", password);
-  await page.click("#sync-register");
-
+  // account sync panel lives in Settings (off the customer home page)
+  await page.goto("/#/app/settings");
+  await page.click("#sync-now");
   await expect(page.locator("#sync-status")).toContainText("Synced");
   await expect(page.locator("#sync-logout")).toBeEnabled();
 
-  // add a reminder and let debounced auto-sync push it
+  // add a reminder and let sync push it
+  await page.goto("/#/app/new");
   await page.fill("#title", "Sync across device");
   await page.fill("#datetime", "2030-01-02T09:00");
   await page.click('#reminder-form button[type="submit"]');
+  await page.goto("/#/app/settings");
   await page.click("#sync-now");
   await expect(page.locator("#sync-status")).toContainText("Synced");
 
@@ -39,11 +36,13 @@ test("registers, syncs across logins, and deletes via sync UI", async ({
   expect(body.reminders.map((r) => r.title)).toContain("Sync across device");
 
   // delete it; the tombstone should reach the backend
+  await page.goto("/#/app/manage");
   await page
     .locator("ul.list > li")
     .first()
     .getByRole("button", { name: "Delete", exact: false })
     .click();
+  await page.goto("/#/app/settings");
   await page.click("#sync-now");
   await expect(page.locator("#sync-status")).toContainText("Synced");
 

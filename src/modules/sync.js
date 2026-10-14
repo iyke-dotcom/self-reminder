@@ -66,25 +66,57 @@ export async function request({
 }
 
 export async function register({ apiUrl, username, password }) {
-  const { token } = await request({
+  const data = await request({
     url: apiUrl,
     path: "/api/register",
     method: "POST",
     body: { username, password },
   });
-  setAuth({ token, username, apiUrl });
+  setAuth({
+    token: data.token,
+    username,
+    apiUrl,
+    role: data.user?.role || "customer",
+  });
   setSyncMeta({ lastSyncedAt: 0 });
+  return data;
 }
 
 export async function login({ apiUrl, username, password }) {
-  const { token } = await request({
+  const data = await request({
     url: apiUrl,
     path: "/api/login",
     method: "POST",
     body: { username, password },
   });
-  setAuth({ token, username, apiUrl });
+  setAuth({
+    token: data.token,
+    username,
+    apiUrl,
+    role: data.user?.role || "customer",
+  });
   setSyncMeta({ lastSyncedAt: 0 });
+  return data;
+}
+
+// Refreshes the stored role from the server (/api/me). Used by the route
+// guards for sessions created before roles existed. Returns the role, or
+// null when the server is unreachable (offline sessions stay customer-local).
+export async function refreshRole({ apiUrl }) {
+  const auth = getAuth();
+  if (!auth.token) return null;
+  try {
+    const data = await request({
+      url: apiUrl,
+      path: "/api/me",
+      token: auth.token,
+    });
+    const role = data.user?.role || "customer";
+    setAuth({ ...auth, role });
+    return role;
+  } catch {
+    return null;
+  }
 }
 
 export function logout() {

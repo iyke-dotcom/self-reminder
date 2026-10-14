@@ -43,6 +43,47 @@ Then open the app, scroll to **Account sync** in Settings, set **Server URL** to
 
 Endpoints: `POST /api/register`, `POST /api/login`, `GET /api/me`, `GET /api/reminders`, `POST /api/sync` — every endpoint except register/login requires `Authorization: Bearer <token>`.
 
+## Segments & Roles (customer vs admin)
+
+The app has three segments behind a hash router:
+
+| Route | Segment | Who |
+| ----- | ------- | --- |
+| `#/` `#/login` | Public landing + customer sign in / sign up | Everyone |
+| `#/app`, `#/app/new`, `#/app/manage`, `#/app/settings` | Customer (home, add, manage, settings) | Logged-in `customer` only |
+| `#/admin` | Admin (users table + all reminders) | Logged-in `admin` only |
+
+Guards: unauthenticated visits go to `#/login`; customers visiting `#/admin` get sent to `#/app` (API: 403); admins visiting `#/app*` get sent to `#/admin`. The customer home shows only a welcome message, Add/Manage links, and logout — the sync debug panel lives under Settings and admin UI is never linked from customer pages. Registration always creates a `customer` (the client cannot set a role); passwords are scrypt-hashed, auth is HMAC-signed JWT.
+
+### Run with roles
+
+```bash
+cp server/.env.example server/.env   # review PORT, DATA_DIR, JWT_SECRET
+npm run server
+```
+
+### Seed an admin
+
+```bash
+ADMIN_USERNAME=admin ADMIN_PASSWORD='a-long-password-here' npm run seed:admin
+# optional: ADMIN_EMAIL=you@example.com ADMIN_NAME="Your Name" DATA_DIR=server/.pgdata
+```
+
+This creates (or promotes) that username to `role = 'admin'`. Then:
+
+- **Customer:** open the app (`#/`), Create account → lands on `#/app` home.
+- **Admin:** open the app, Sign in with the seeded admin credentials → lands on `#/admin`.
+
+Admin API (all require an admin token): `GET /api/admin/users`, `GET /api/admin/reminders`. Customer-scoped alias: `GET /api/customer/reminders` (403 for admins).
+
+### E2E with an admin
+
+```bash
+# seed the DB the e2e server uses, then point the guard spec at it:
+ADMIN_USERNAME=e2e-admin ADMIN_PASSWORD='correct-horse' DATA_DIR=server/.pgdata npm run seed:admin
+E2E_ADMIN_USERNAME=e2e-admin E2E_ADMIN_PASSWORD='correct-horse' npx playwright test guards
+```
+
 ## Usage
 
 1. Type what you want to remember in the **title** field.
@@ -94,12 +135,15 @@ src/
     ui/             form, list, modal, view (query/sort/status state)
     settings.js     persisted app settings
     backup.js       JSON export/import
-    sync.js         account auth + cross-device sync (merge, tombstones)
+    sync.js         account auth (now with role) + cross-device sync
+    admin.js        admin API client (users, all reminders)
     ics.js          calendar (.ics) export
   utils/            date helpers, natural-language dates, id generation
   i18n.js           message catalog (en, fr) + t()
 public/             manifest, service worker, icons
-server/             Express + PGLite sync backend (db, auth, app, index, .env)
+server/             Express + PGLite backend (db with roles, auth, app with
+                    requireAuth/requireCustomer/requireAdmin, index, .env)
+scripts/            seed-admin.mjs (create/promote the admin account)
 tests/unit/         Vitest unit tests
 tests/server/       API integration tests (PGlite in-memory)
 tests/e2e/          Playwright end-to-end specs

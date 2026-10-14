@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app.js";
-import { createDb } from "../../server/db.js";
+import { createDb, createUser } from "../../server/db.js";
+import { hashPassword, newUserId } from "../../server/auth.js";
 
 let db;
 let server;
@@ -202,5 +203,124 @@ describe("sync server (PostgreSQL via PGlite)", () => {
       "r1",
       "r2",
     ]);
+  }, 30_000);
+
+  it("registers customers and never trusts client-supplied roles", async () => {
+    const reg = await api(base, "/api/register", {
+      method: "POST",
+      body: {
+        username: "dave",
+        password: "correct-horse",
+        email: "dave@example.com",
+        name: "Dave",
+        role: "admin",
+      },
+    });
+    expect(reg.status).toBe(201);
+    expect(reg.data.user.role).toBe("customer");
+
+    const me = await api(base, "/api/me", { token: reg.data.token });
+    expect(me.data.user).toMatchObject({
+      username: "dave",
+      email: "dave@example.com",
+      name: "Dave",
+      role: "customer",
+    });
+
+    const dupEmail = await api(base, "/api/register", {
+      method: "POST",
+      body: {
+        username: "dave2",
+        password: "correct-horse",
+        email: "dave@example.com",
+      },
+    });
+    expect(dupEmail.status).toBe(409);
+  }, 30_000);
+
+  it("enforces customer/admin guards and per-user isolation", async () => {
+    await createUser(db, {
+      id: newUserId(),
+      username: "root",
+      passwordHash: hashPassword("correct-horse"),
+      role: "admin",
+    });
+    const adminLogin = await api(base, "/api/login", {
+      method: "POST",
+      body: { username: "root", password: "correct-horse" },
+    });
+    expect(adminLogin.status).toBe(200);
+    const adminToken = adminLogin.data.token;
+
+    const custReg = await api(base, "/api/register", {
+      method: "POST",
+      body: { username: "erin", password: "correct-horse" },
+    });
+    const custToken = custReg.data.token;
+
+    // Customer routes
+    const custOk = await api(base, "/api/customer/reminders", {
+      token: custToken,
+    });
+    expect(custOk.status).toBe(200);
+    const adminOnCustomer = await api(base, "/api/customer/reminders", {
+      token: adminToken,
+    });
+    expect(adminOnCustomer.status).toBe(403);
+    const anonOnCustomer = await api(base, "/api/customer/reminders");
+    expect(anonOnCustomer.status).toBe(401);
+
+    // Admin routes
+    const custOnAdmin = await api(base, "/api/admin/users", {
+      token: custToken,
+    });
+    expect(custOnAdmin.status).toBe(403);
+    const adminOk = await api(base, "/api/admin/users", {
+      token: adminToken,
+    });
+    expect(adminOk.status).toBe(200);
+    expect(adminOk.data.users.map((u) => u.username)).toContain("root");
+    expect(adminOk.data.users.find((u) => u.username === "root").role).toBe(
+      "admin",
+    );
+    expect(adminOk.data.users.every((u) => u.password_hash === undefined)).toBe(
+      true,
+    );
+
+    // Per-user isolation: erin's reminder invisible to others
+    await api(base, "/api/sync", {
+      method: "POST",
+      body: {
+        updates: [
+          {
+            id: "erin-only",
+            title: "Erin private",
+            date: "2026-11-01T09:00:00.000Z",
+            priority: "medium",
+            tags: [],
+            recurring: null,
+            notified: false,
+            done: false,
+            updatedAt: 5000,
+          },
+        ],
+        deletes: [],
+      },
+      token: custToken,
+    });
+    const adminView = await api(base, "/api/admin/reminders", {
+      token: adminToken,
+    });
+    expect(adminView.data.reminders.map((r) => r.id)).toContain("erin-only");
+    const otherReg = await api(base, "/api/register", {
+      method: "POST",
+      body: { username: "frank", password: "correct-horse" },
+    });
+    const otherView = await api(base, "/api/reminders", {
+      token: otherReg.data.token,
+    });
+    expect(otherView.data.reminders.map((r) => r.id)).not.toContain(
+      "erin-only",
+    );
   }, 30_000);
 });

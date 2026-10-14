@@ -12,9 +12,11 @@ import {
   getAuth,
   login as syncLogin,
   logout as syncLogout,
+  refreshRole,
   register as syncRegister,
   syncNow,
 } from "./modules/sync.js";
+import { fetchAdminReminders, fetchAdminUsers } from "./modules/admin.js";
 import {
   filterReminders,
   sortReminders,
@@ -395,15 +397,178 @@ function init({ store, migrated }) {
     }
   }
 
-  function setGate(visible) {
-    if (loginScreen) loginScreen.style.display = visible ? "flex" : "none";
-    if (appMain) appMain.style.display = visible ? "none" : "block";
-    if (syncAccount) syncAccount.style.display = visible ? "none" : "block";
-    if (logoutBtn) logoutBtn.style.display = visible ? "none" : "inline-flex";
+  const adminMain = document.getElementById("admin-main");
+  const adminStatus = document.getElementById("admin-status");
+  const adminUsersBody = document.querySelector("#admin-users tbody");
+  const adminRemindersBody = document.querySelector("#admin-reminders tbody");
+  const adminLogoutBtn = document.getElementById("admin-logout");
+  const welcomeHeading = document.getElementById("welcome-heading");
+  const viewHome = document.getElementById("view-home");
+  const viewNew = document.getElementById("view-new");
+  const viewManage = document.getElementById("view-manage");
+  const viewSettings = document.getElementById("view-settings");
+
+  // Unified session: backend token (with role) or offline local fallback
+  // (always customer-local, never admin).
+  function getSession() {
+    const auth = getAuth();
+    if (auth.token) {
+      return {
+        username: auth.username,
+        role: auth.role || null,
+        apiUrl: auth.apiUrl || DEFAULT_API_URL,
+        backend: true,
+      };
+    }
+    const local = readLocalAuth();
+    if (local) {
+      return {
+        username: local.username,
+        role: "customer",
+        apiUrl: DEFAULT_API_URL,
+        backend: false,
+      };
+    }
+    return null;
   }
 
-  const hasSession = Boolean(getAuth().token) || Boolean(readLocalAuth());
-  setGate(!hasSession);
+  async function resolveRole(session) {
+    if (!session) return null;
+    if (!session.backend) return "customer";
+    if (session.role) return session.role;
+    return (await refreshRole({ apiUrl: session.apiUrl })) || "customer";
+  }
+
+  function showSection(name) {
+    if (loginScreen)
+      loginScreen.style.display = name === "login" ? "flex" : "none";
+    if (appMain) appMain.style.display = name === "app" ? "block" : "none";
+    if (adminMain) adminMain.hidden = name !== "admin";
+    if (logoutBtn)
+      logoutBtn.style.display = name === "app" ? "inline-flex" : "none";
+  }
+
+  function showCustomerView(which) {
+    const views = {
+      home: viewHome,
+      new: viewNew,
+      manage: viewManage,
+      settings: viewSettings,
+    };
+    for (const [key, el] of Object.entries(views)) {
+      if (el) el.hidden = key !== which;
+    }
+    // The sync panel is backend plumbing: visible only in Settings, never
+    // on the customer home page.
+    if (syncAccount)
+      syncAccount.style.display = which === "settings" ? "block" : "none";
+  }
+
+  function adminCell(text) {
+    const td = document.createElement("td");
+    td.textContent = text ?? "";
+    return td;
+  }
+
+  async function renderAdmin(session) {
+    if (adminStatus)
+      adminStatus.textContent = `Signed in as ${session.username} (admin)`;
+    try {
+      const [users, reminders] = await Promise.all([
+        fetchAdminUsers({ apiUrl: session.apiUrl }),
+        fetchAdminReminders({ apiUrl: session.apiUrl }),
+      ]);
+      adminUsersBody?.replaceChildren(
+        ...users.map((u) => {
+          const tr = document.createElement("tr");
+          tr.append(
+            adminCell(u.username),
+            adminCell(u.email),
+            adminCell(u.name),
+            adminCell(u.role),
+            adminCell(new Date(u.created_at).toLocaleString()),
+          );
+          return tr;
+        }),
+      );
+      adminRemindersBody?.replaceChildren(
+        ...reminders.map((r) => {
+          const tr = document.createElement("tr");
+          tr.append(
+            adminCell(r.title),
+            adminCell(r.owner),
+            adminCell(r.date),
+            adminCell(r.status),
+            adminCell(r.done ? "yes" : "no"),
+          );
+          return tr;
+        }),
+      );
+    } catch (error) {
+      if (adminStatus)
+        adminStatus.textContent = `Admin load failed: ${error.message}`;
+    }
+  }
+
+  // Segment router. Public: #/ and #/login. Customer: #/app*. Admin: #/admin.
+  // requireAuth -> #/login; requireCustomer pushes admins to #/admin;
+  // requireAdmin pushes customers to #/app.
+  // Note: no re-entrancy flag here on purpose. A hash change fires route()
+  // again and every run converges (redirect or render); dropping a run
+  // instead would strand the URL on the wrong segment.
+  async function route() {
+    try {
+      const hash = location.hash || "#/";
+      const session = getSession();
+      if (hash.startsWith("#/admin")) {
+        if (!session) {
+          location.hash = "#/login";
+          return;
+        }
+        if ((await resolveRole(session)) !== "admin") {
+          location.hash = "#/app";
+          return;
+        }
+        showSection("admin");
+        await renderAdmin(session);
+        return;
+      }
+      if (hash.startsWith("#/app")) {
+        if (!session) {
+          location.hash = "#/login";
+          return;
+        }
+        if ((await resolveRole(session)) === "admin") {
+          location.hash = "#/admin";
+          return;
+        }
+        showSection("app");
+        const sub =
+          hash === "#/app/new"
+            ? "new"
+            : hash === "#/app/manage"
+              ? "manage"
+              : hash === "#/app/settings"
+                ? "settings"
+                : "home";
+        if (welcomeHeading && session.username) {
+          welcomeHeading.textContent = `Welcome, ${session.username}`;
+        }
+        showCustomerView(sub);
+        updateSyncStatus();
+        return;
+      }
+      if (session) {
+        location.hash =
+          (await resolveRole(session)) === "admin" ? "#/admin" : "#/app";
+        return;
+      }
+      showSection("login");
+    } catch (error) {
+      console.error("Routing failed:", error);
+    }
+  }
+  window.addEventListener("hashchange", route);
 
   function busy(flag) {
     if (loginBtn) loginBtn.disabled = flag;
@@ -427,8 +592,8 @@ function init({ store, migrated }) {
         JSON.stringify({ username, at: Date.now() }),
       );
       if (loginStatus) loginStatus.textContent = "";
-      setGate(false);
       updateSyncStatus();
+      await route();
     } catch (error) {
       const unreachable = !error || error.status === undefined;
       if (allowLocalFallback && unreachable) {
@@ -437,8 +602,8 @@ function init({ store, migrated }) {
           JSON.stringify({ username, at: Date.now() }),
         );
         if (loginStatus) loginStatus.textContent = "";
-        setGate(false);
         updateSyncStatus();
+        await route();
       } else if (loginStatus) {
         loginStatus.textContent = error?.message || `${verb} failed.`;
       }
@@ -456,15 +621,19 @@ function init({ store, migrated }) {
   loginPass?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") loginBtn?.click();
   });
-  logoutBtn?.addEventListener("click", () => {
+  async function doLogout() {
     syncLogout();
     localStorage.removeItem(LOCAL_AUTH_KEY);
     updateSyncStatus();
-    setGate(true);
-  });
+    if (location.hash !== "#/login") location.hash = "#/login";
+    await route();
+  }
+  logoutBtn?.addEventListener("click", doLogout);
+  adminLogoutBtn?.addEventListener("click", doLogout);
 
   syncApi.value = getAuth().apiUrl || DEFAULT_API_URL;
   updateSyncStatus();
+  route();
 
   async function submitAuth(action) {
     const username = syncUsername.value.trim();

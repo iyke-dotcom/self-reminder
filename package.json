@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "server": "node server/index.js",
+    "seed:admin": "node scripts/seed-admin.mjs",
     "prepare": "husky"
   },
   "lint-staged": {

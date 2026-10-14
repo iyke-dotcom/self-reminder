@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { signupAs, unique } from "./helpers.js";
 
 test("searches and filters reminders", async ({ page }) => {
-  await page.goto("/");
+  await signupAs(page, unique("flt"));
+  await page.goto("/#/app/new");
 
   await page.fill("#title", "Buy groceries");
   await page.fill("#datetime", "2030-01-01T09:00");
@@ -12,6 +14,7 @@ test("searches and filters reminders", async ({ page }) => {
   await page.fill("#datetime", "2030-01-02T09:00");
   await page.click('#reminder-form button[type="submit"]');
 
+  await page.goto("/#/app/manage");
   await expect(page.locator("ul.list > li")).toHaveCount(2);
 
   await page.fill("#search", "dentist");
