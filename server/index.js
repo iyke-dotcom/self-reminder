@@ -16,11 +16,16 @@ if (!secret) {
 
 mkdirSync(dataDir, { recursive: true });
 const db = await createDb(dataDir);
-const app = createApp({ db, secret });
+// Hosting sets CLIENT_ORIGINS to the app URL(s), e.g.
+// https://self-reminder1.netlify.app — otherwise browsers block the calls.
+// Undefined falls back to the localhost dev origins in app.js.
+const origins = process.env.CLIENT_ORIGINS || undefined;
+const app = createApp({ db, secret, origins });
 
 app.listen(port, () => {
   console.log(
     `Self Reminder sync server listening on http://localhost:${port}`,
   );
   console.log(`Database engine: PostgreSQL (PGlite) at ${dataDir}`);
+  console.log(`Allowed origins: ${origins || "(localhost defaults)"}`);
 });

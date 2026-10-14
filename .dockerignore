@@ -1,0 +1,10 @@
+# Keep the image lean and secret-free: the local DB, real .env, host
+# dependencies and build output must never ship inside the image.
+node_modules
+dist
+.git
+server/.pgdata
+server/.env
+test-results
+playwright-report
+.netlify

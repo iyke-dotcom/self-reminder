@@ -44,7 +44,44 @@ Then open the app: the login screen asks for **email address + password** (and t
 
 After sign-in the app pulls your server reminders first, so signing in on another device (pointed at the **same** Server URL) shows the reminders you set elsewhere. New reminders sync automatically (debounced) and merge across devices with last-write-wins conflict resolution. Data is stored in `server/.pgdata`.
 
-> Cross-device note: every device must reach the same backend over the network. `http://localhost:3000` only works on the machine running the server — to sync a phone or another computer, host the backend somewhere reachable (any Node host works: `npm run server` with `PORT`/`DATA_DIR`/`JWT_SECRET` set) and enter its `https://…` address in the login screen's Server URL field.
+> Cross-device note: every device must reach the same backend over the network. `http://localhost:3000` only works on the machine running the server — to sync a phone or another computer, host the backend somewhere reachable and enter its `https://…` address in the login screen's Server URL field.
+
+## Host the sync backend (`Dockerfile` + `.dockerignore`)
+
+The repo ships a one-file host config for the backend. It runs anywhere Docker runs; data persists in `/data` (mount a volume/disk there).
+
+**Required environment on the host:**
+
+| Variable | Example |
+| -------- | ------- |
+| `JWT_SECRET` | a long random string (generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `CLIENT_ORIGINS` | `https://self-reminder1.netlify.app` (your app URL — browsers block anything else) |
+| `DATA_DIR` | `/data/.pgdata` (already the image default) |
+
+**Option A — Render (easiest):** New → Web Service → deploy this repo (Docker runtime) → set the env vars above → add a disk mounted at `/data` if you want restarts to keep data (free instances without a disk lose data on restart).
+
+**Option B — Fly.io (persistent volume on the free allowance):**
+
+```bash
+fly launch --dockerfile Dockerfile --no-deploy
+fly volumes create reminder_data --size 1
+fly secrets set JWT_SECRET='<long-random>' CLIENT_ORIGINS='https://self-reminder1.netlify.app'
+fly deploy
+```
+
+(`fly.toml` will point the app's `[mounts]` at `reminder_data` → `/data`.)
+
+**Try it locally first:**
+
+```bash
+docker build -t self-reminder-server .
+docker run --rm -p 3000:10000 -v reminder-data:/data \
+  -e JWT_SECRET='dev-local-secret' \
+  -e CLIENT_ORIGINS='http://localhost:5173,http://localhost:4173' \
+  self-reminder-server
+```
+
+Then `npm run seed:admin` against it for the admin account (run with `DATA_DIR` pointed at an empty dir, or exec into the host), and sign in from any device with the public `https://…` URL.
 
 Endpoints: `POST /api/register`, `POST /api/login`, `GET /api/me`, `GET /api/reminders`, `POST /api/sync` — every endpoint except register/login requires `Authorization: Bearer <token>`.
 
