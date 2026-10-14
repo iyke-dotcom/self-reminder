@@ -416,26 +416,18 @@ function init({ store, migrated }) {
 
   applySettingsUi();
 
-  // Login gate: wire the Sign in / Create account screen.
+  // Login gate: email + password, hard server-backed gate. No token means
+  // no entry — there is no offline bypass.
   const loginScreen = document.getElementById("login-screen");
   const appMain = document.getElementById("app-main");
-  const loginUser = document.getElementById("login-username");
+  const loginEmail = document.getElementById("login-email");
   const loginPass = document.getElementById("login-password");
+  const loginApi = document.getElementById("login-api");
   const loginBtn = document.getElementById("login-btn");
   const signupBtn = document.getElementById("signup-btn");
   const loginStatus = document.getElementById("login-status");
   const logoutBtn = document.getElementById("logout-btn");
   const syncAccount = document.getElementById("sync-account");
-
-  const LOCAL_AUTH_KEY = "self-reminder.localAuth";
-
-  function readLocalAuth() {
-    try {
-      return JSON.parse(localStorage.getItem(LOCAL_AUTH_KEY) || "null");
-    } catch {
-      return null;
-    }
-  }
 
   const adminMain = document.getElementById("admin-main");
   const adminStatus = document.getElementById("admin-status");
@@ -459,35 +451,43 @@ function init({ store, migrated }) {
     toast: (message) => showToast(toastEl, message, { isDue: true }),
   });
 
-  // Unified session: backend token (with role) or offline local fallback
-  // (always customer-local, never admin).
+  // Unified session: a stored backend token only. The login details are
+  // saved in localStorage, so signing in on another device with the same
+  // account pulls the same server reminders.
   function getSession() {
     const auth = getAuth();
     if (auth.token) {
       return {
         username: auth.username,
+        email: auth.email || null,
         role: auth.role || null,
         apiUrl: auth.apiUrl || DEFAULT_API_URL,
         backend: true,
       };
     }
-    const local = readLocalAuth();
-    if (local) {
-      return {
-        username: local.username,
-        role: "customer",
-        apiUrl: DEFAULT_API_URL,
-        backend: false,
-      };
-    }
     return null;
+  }
+
+  function gateApiUrl() {
+    const url = String(loginApi?.value || syncApi.value || "").trim();
+    return url || getAuth().apiUrl || DEFAULT_API_URL;
   }
 
   async function resolveRole(session) {
     if (!session) return null;
-    if (!session.backend) return "customer";
     if (session.role) return session.role;
-    return (await refreshRole({ apiUrl: session.apiUrl })) || "customer";
+    try {
+      return (await refreshRole({ apiUrl: session.apiUrl })) || "customer";
+    } catch (error) {
+      if (error?.status === 401) {
+        // Dead token (e.g. server DB was reset): bounce to the login screen.
+        syncLogout();
+        updateSyncStatus();
+        return null;
+      }
+      // Server unreachable: keep working locally with cached data.
+      return "customer";
+    }
   }
 
   function showSection(name) {
@@ -633,37 +633,41 @@ function init({ store, migrated }) {
     if (signupBtn) signupBtn.disabled = flag;
   }
 
-  async function handleAuth(action, verb, { allowLocalFallback }) {
-    const username = loginUser.value.trim();
+  async function handleAuth(action, verb, { requireEmail }) {
+    const email = loginEmail.value.trim().toLowerCase();
     const password = loginPass.value;
-    if (!username || !password) {
+    if (!email || !password) {
       if (loginStatus)
-        loginStatus.textContent = "Enter a username and password.";
+        loginStatus.textContent = "Enter your email address and password.";
       return;
     }
+    // Sign-up requires a real email (accounts are email-keyed). Sign-in
+    // accepts a username too so older/seeded accounts are never locked out —
+    // the server tries email first, then username.
+    if (requireEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (loginStatus) loginStatus.textContent = "Enter a valid email address.";
+      return;
+    }
+    const apiUrl = gateApiUrl();
     if (loginStatus) loginStatus.textContent = `${verb}...`;
     busy(true);
     try {
-      await action({ apiUrl: accountApiUrl(), username, password });
-      localStorage.setItem(
-        LOCAL_AUTH_KEY,
-        JSON.stringify({ username, at: Date.now() }),
-      );
+      await action({ apiUrl, email, password });
+      if (loginApi) loginApi.value = apiUrl;
+      syncApi.value = apiUrl;
       if (loginStatus) loginStatus.textContent = "";
+      updateSyncStatus();
+      // Pull the account's server reminders first, so signing in on another
+      // device shows the reminders set elsewhere.
+      await runSync(true).catch(() => {});
       updateSyncStatus();
       await route();
     } catch (error) {
-      const unreachable = !error || error.status === undefined;
-      if (allowLocalFallback && unreachable) {
-        localStorage.setItem(
-          LOCAL_AUTH_KEY,
-          JSON.stringify({ username, at: Date.now() }),
-        );
-        if (loginStatus) loginStatus.textContent = "";
-        updateSyncStatus();
-        await route();
-      } else if (loginStatus) {
-        loginStatus.textContent = error?.message || `${verb} failed.`;
+      if (loginStatus) {
+        loginStatus.textContent =
+          error?.status === undefined
+            ? `Cannot reach the sync server at ${apiUrl}. Check the Server URL and try again.`
+            : error?.message || `${verb} failed.`;
       }
     } finally {
       busy(false);
@@ -671,17 +675,16 @@ function init({ store, migrated }) {
   }
 
   loginBtn?.addEventListener("click", () =>
-    handleAuth(syncLogin, "Signing in", { allowLocalFallback: true }),
+    handleAuth(syncLogin, "Signing in", { requireEmail: false }),
   );
   signupBtn?.addEventListener("click", () =>
-    handleAuth(syncRegister, "Creating account", { allowLocalFallback: true }),
+    handleAuth(syncRegister, "Creating account", { requireEmail: true }),
   );
   loginPass?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") loginBtn?.click();
   });
   async function doLogout() {
     syncLogout();
-    localStorage.removeItem(LOCAL_AUTH_KEY);
     updateSyncStatus();
     if (location.hash !== "#/login") location.hash = "#/login";
     await route();
@@ -690,6 +693,7 @@ function init({ store, migrated }) {
   adminLogoutBtn?.addEventListener("click", doLogout);
 
   syncApi.value = getAuth().apiUrl || DEFAULT_API_URL;
+  if (loginApi) loginApi.value = getAuth().apiUrl || DEFAULT_API_URL;
   updateSyncStatus();
   route();
 

@@ -51,7 +51,8 @@ test("admin lands on /admin and is kept out of customer pages", async ({
     "needs a seeded admin: set E2E_ADMIN_USERNAME (+E2E_ADMIN_PASSWORD)",
   );
   await page.goto("/#/login");
-  await page.fill("#login-username", adminUser);
+  // the email field also accepts the admin username (server falls back)
+  await page.fill("#login-email", adminUser);
   await page.fill("#login-password", adminPass);
   await page.click("#login-btn");
   await page.waitForURL("**#/admin*");

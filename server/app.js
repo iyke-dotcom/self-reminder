@@ -125,18 +125,35 @@ export function createApp({ db, secret, origins = DEFAULT_ORIGINS }) {
     next();
   }
 
-  function validateCredentials(req, res) {
-    const username = String(req.body?.username || "").trim();
-    const password = String(req.body?.password || "");
-    if (username.length < 3 || username.length > 40) {
-      res.status(400).json({ error: "Username must be 3-40 characters" });
+  function validateEmail(value) {
+    const email = String(value || "")
+      .trim()
+      .toLowerCase();
+    if (
+      email.length < 5 ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
       return null;
     }
-    if (password.length < 8) {
-      res.status(400).json({ error: "Password must be at least 8 characters" });
-      return null;
+    return email;
+  }
+
+  // Usernames stay the internal unique handle; when the client only sends an
+  // email (the login screen), derive a unique username from it.
+  async function deriveUsername(email) {
+    const local = email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "")
+      .slice(0, 30);
+    const base = local.length >= 3 ? local : "user";
+    for (let n = 0; n < 100; n += 1) {
+      const candidate = n === 0 ? base : `${base}${n + 1}`.slice(0, 40);
+      const taken = await findUserByUsername(db, candidate);
+      if (!taken) return candidate;
     }
-    return { username, password };
+    return `user${Date.now().toString(36)}`;
   }
 
   app.get("/api/health", (_req, res) => {
@@ -145,30 +162,46 @@ export function createApp({ db, secret, origins = DEFAULT_ORIGINS }) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const credentials = validateCredentials(req, res);
-      if (!credentials) return;
       // Role is NEVER taken from the client: public registration always
       // creates a customer. Admins are created via the seed script.
-      const email = String(req.body?.email || "").trim() || null;
+      // Email is required; username is optional and derived when omitted.
+      const email = validateEmail(req.body?.email);
+      if (!email) {
+        res.status(400).json({ error: "A valid email address is required" });
+        return;
+      }
+      const password = String(req.body?.password || "");
+      if (password.length < 8) {
+        res
+          .status(400)
+          .json({ error: "Password must be at least 8 characters" });
+        return;
+      }
+      const emailTaken = await findUserByEmail(db, email);
+      if (emailTaken) {
+        res.status(409).json({ error: "Email already registered" });
+        return;
+      }
+      let username = String(req.body?.username || "").trim();
+      if (username) {
+        if (username.length < 3 || username.length > 40) {
+          res.status(400).json({ error: "Username must be 3-40 characters" });
+          return;
+        }
+        if (await findUserByUsername(db, username)) {
+          res.status(409).json({ error: "Username already taken" });
+          return;
+        }
+      } else {
+        username = await deriveUsername(email);
+      }
       const name = String(req.body?.name || "")
         .trim()
         .slice(0, 80);
-      const existing = await findUserByUsername(db, credentials.username);
-      if (existing) {
-        res.status(409).json({ error: "Username already taken" });
-        return;
-      }
-      if (email) {
-        const emailTaken = await findUserByEmail(db, email);
-        if (emailTaken) {
-          res.status(409).json({ error: "Email already registered" });
-          return;
-        }
-      }
       const id = await createUser(db, {
         id: newUserId(),
-        username: credentials.username,
-        passwordHash: hashPassword(credentials.password),
+        username,
+        passwordHash: hashPassword(password),
         email,
         name,
         role: "customer",
@@ -185,11 +218,16 @@ export function createApp({ db, secret, origins = DEFAULT_ORIGINS }) {
 
   app.post("/api/login", async (req, res, next) => {
     try {
-      const username = String(req.body?.username || "").trim();
+      // Accepts an email address or a username in either field.
+      const login = String(req.body?.email || req.body?.username || "").trim();
       const password = String(req.body?.password || "");
-      const row = await findUserByUsername(db, username);
+      let row =
+        login && login.includes("@")
+          ? await findUserByEmail(db, login.toLowerCase())
+          : null;
+      if (!row && login) row = await findUserByUsername(db, login);
       if (!row || !verifyPassword(password, row.password_hash)) {
-        res.status(401).json({ error: "Invalid username or password" });
+        res.status(401).json({ error: "Invalid email or password" });
         return;
       }
       const user = rowToUser(row);
@@ -637,11 +675,9 @@ export function createApp({ db, secret, origins = DEFAULT_ORIGINS }) {
         }
         const status = String(req.body?.status || "");
         if (!RSVP_STATUSES.includes(status)) {
-          res
-            .status(400)
-            .json({
-              error: `Status must be one of: ${RSVP_STATUSES.join(", ")}`,
-            });
+          res.status(400).json({
+            error: `Status must be one of: ${RSVP_STATUSES.join(", ")}`,
+          });
           return;
         }
         await setRsvp(db, {

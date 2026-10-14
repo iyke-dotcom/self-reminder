@@ -5,10 +5,13 @@ export const e2ePassword = "correct-horse";
 export const unique = (prefix) =>
   `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
 
-// Registers through the public login screen and lands on the classic app.
+export const emailFor = (name) => `${name}@example.com`;
+
+// Registers through the public email login screen and lands on the app.
+// Registration pulls the (empty) server state, proving the sync round-trip.
 export async function signupAs(page, username, password = e2ePassword) {
   await page.goto("/#/login");
-  await page.fill("#login-username", username);
+  await page.fill("#login-email", emailFor(username));
   await page.fill("#login-password", password);
   await page.click("#signup-btn");
   await page.waitForURL("**#/app*");
@@ -17,7 +20,7 @@ export async function signupAs(page, username, password = e2ePassword) {
 
 export async function loginAs(page, username, password = e2ePassword) {
   await page.goto("/#/login");
-  await page.fill("#login-username", username);
+  await page.fill("#login-email", emailFor(username));
   await page.fill("#login-password", password);
   await page.click("#login-btn");
   await page.waitForURL("**#/app*");

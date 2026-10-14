@@ -40,7 +40,11 @@ cp server/.env.example server/.env   # review PORT, DATA_DIR, JWT_SECRET
 npm run server
 ```
 
-Then open the app, scroll to **Account sync** in Settings, set **Server URL** to `http://localhost:3000` (default), and **Create account** or **Log in**. Reminders sync automatically (debounced) and merge across devices with last-write-wins conflict resolution. Data is stored in `server/.pgdata`.
+Then open the app: the login screen asks for **email address + password** (and the **Server URL**, default `http://localhost:3000`). **Create account** registers the email; **Sign in** logs in with email (usernames also work). There is no offline bypass — without a saved login you stay on the login screen.
+
+After sign-in the app pulls your server reminders first, so signing in on another device (pointed at the **same** Server URL) shows the reminders you set elsewhere. New reminders sync automatically (debounced) and merge across devices with last-write-wins conflict resolution. Data is stored in `server/.pgdata`.
+
+> Cross-device note: every device must reach the same backend over the network. `http://localhost:3000` only works on the machine running the server — to sync a phone or another computer, host the backend somewhere reachable (any Node host works: `npm run server` with `PORT`/`DATA_DIR`/`JWT_SECRET` set) and enter its `https://…` address in the login screen's Server URL field.
 
 Endpoints: `POST /api/register`, `POST /api/login`, `GET /api/me`, `GET /api/reminders`, `POST /api/sync` — every endpoint except register/login requires `Authorization: Bearer <token>`.
 

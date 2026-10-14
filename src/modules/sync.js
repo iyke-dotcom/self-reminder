@@ -65,16 +65,17 @@ export async function request({
   }
 }
 
-export async function register({ apiUrl, username, password }) {
+export async function register({ apiUrl, username, email, password }) {
   const data = await request({
     url: apiUrl,
     path: "/api/register",
     method: "POST",
-    body: { username, password },
+    body: { username, email, password },
   });
   setAuth({
     token: data.token,
-    username,
+    username: data.user?.username || username || email,
+    email: data.user?.email || email || null,
     apiUrl,
     role: data.user?.role || "customer",
     userId: data.user?.id || null,
@@ -83,16 +84,17 @@ export async function register({ apiUrl, username, password }) {
   return data;
 }
 
-export async function login({ apiUrl, username, password }) {
+export async function login({ apiUrl, username, email, password }) {
   const data = await request({
     url: apiUrl,
     path: "/api/login",
     method: "POST",
-    body: { username, password },
+    body: { username, email, password },
   });
   setAuth({
     token: data.token,
-    username,
+    username: data.user?.username || username || email,
+    email: data.user?.email || email || null,
     apiUrl,
     role: data.user?.role || "customer",
     userId: data.user?.id || null,
@@ -101,9 +103,9 @@ export async function login({ apiUrl, username, password }) {
   return data;
 }
 
-// Refreshes the stored role from the server (/api/me). Used by the route
-// guards for sessions created before roles existed. Returns the role, or
-// null when the server is unreachable (offline sessions stay customer-local).
+// Refreshes the stored role from the server (/api/me). Returns the role.
+// Throws on 401 (dead token: caller must log out); returns null when the
+// server is merely unreachable so offline sessions keep working locally.
 export async function refreshRole({ apiUrl }) {
   const auth = getAuth();
   if (!auth.token) return null;
@@ -116,7 +118,8 @@ export async function refreshRole({ apiUrl }) {
     const role = data.user?.role || "customer";
     setAuth({ ...auth, role });
     return role;
-  } catch {
+  } catch (error) {
+    if (error?.status === 401) throw error;
     return null;
   }
 }

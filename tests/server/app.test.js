@@ -42,24 +42,80 @@ describe("sync server (PostgreSQL via PGlite)", () => {
     });
     expect(weak.status).toBe(400);
 
-    const ok = await api(base, "/api/register", {
+    const noEmail = await api(base, "/api/register", {
       method: "POST",
       body: { username: "alice", password: "correct-horse" },
+    });
+    expect(noEmail.status).toBe(400);
+
+    const badEmail = await api(base, "/api/register", {
+      method: "POST",
+      body: {
+        username: "alice",
+        password: "correct-horse",
+        email: "not-an-email",
+      },
+    });
+    expect(badEmail.status).toBe(400);
+
+    const ok = await api(base, "/api/register", {
+      method: "POST",
+      body: {
+        username: "alice",
+        password: "correct-horse",
+        email: "alice@example.com",
+      },
     });
     expect(ok.status).toBe(201);
     expect(ok.data.token).toBeTruthy();
 
     const dup = await api(base, "/api/register", {
       method: "POST",
-      body: { username: "alice", password: "another-pass" },
+      body: {
+        username: "alice",
+        password: "another-pass",
+        email: "alice2@example.com",
+      },
     });
     expect(dup.status).toBe(409);
+  }, 30_000);
+
+  it("registers with email only and logs in by email or username", async () => {
+    const reg = await api(base, "/api/register", {
+      method: "POST",
+      body: { email: "ema@example.com", password: "correct-horse" },
+    });
+    expect(reg.status).toBe(201);
+    expect(reg.data.user.email).toBe("ema@example.com");
+    expect(reg.data.user.username).toBe("ema");
+
+    const byEmail = await api(base, "/api/login", {
+      method: "POST",
+      body: { email: "ema@example.com", password: "correct-horse" },
+    });
+    expect(byEmail.status).toBe(200);
+
+    const byUsername = await api(base, "/api/login", {
+      method: "POST",
+      body: { username: "ema", password: "correct-horse" },
+    });
+    expect(byUsername.status).toBe(200);
+
+    const dupEmail = await api(base, "/api/register", {
+      method: "POST",
+      body: { email: "ema@example.com", password: "correct-horse" },
+    });
+    expect(dupEmail.status).toBe(409);
   }, 30_000);
 
   it("logs in and reports identity", async () => {
     await api(base, "/api/register", {
       method: "POST",
-      body: { username: "bob", password: "correct-horse" },
+      body: {
+        username: "bob",
+        password: "correct-horse",
+        email: "bob@example.com",
+      },
     });
     const bad = await api(base, "/api/login", {
       method: "POST",
@@ -84,7 +140,11 @@ describe("sync server (PostgreSQL via PGlite)", () => {
   it("syncs updates, deletes and merges last-write-wins", async () => {
     const reg = await api(base, "/api/register", {
       method: "POST",
-      body: { username: "carol", password: "correct-horse" },
+      body: {
+        username: "carol",
+        password: "correct-horse",
+        email: "carol@example.com",
+      },
     });
     const token = reg.data.token;
 
@@ -254,7 +314,11 @@ describe("sync server (PostgreSQL via PGlite)", () => {
 
     const custReg = await api(base, "/api/register", {
       method: "POST",
-      body: { username: "erin", password: "correct-horse" },
+      body: {
+        username: "erin",
+        password: "correct-horse",
+        email: "erin@example.com",
+      },
     });
     const custToken = custReg.data.token;
 
@@ -314,7 +378,11 @@ describe("sync server (PostgreSQL via PGlite)", () => {
     expect(adminView.data.reminders.map((r) => r.id)).toContain("erin-only");
     const otherReg = await api(base, "/api/register", {
       method: "POST",
-      body: { username: "frank", password: "correct-horse" },
+      body: {
+        username: "frank",
+        password: "correct-horse",
+        email: "frank@example.com",
+      },
     });
     const otherView = await api(base, "/api/reminders", {
       token: otherReg.data.token,
@@ -347,7 +415,11 @@ describe("groups & shared events", () => {
   async function user(name) {
     const reg = await api(gbase, "/api/register", {
       method: "POST",
-      body: { username: name, password: "correct-horse" },
+      body: {
+        username: name,
+        password: "correct-horse",
+        email: `${name}@example.com`,
+      },
     });
     expect(reg.status).toBe(201);
     return { name, token: reg.data.token };
