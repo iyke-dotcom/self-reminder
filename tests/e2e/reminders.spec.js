@@ -12,7 +12,7 @@ test("adds, edits, toggles done, and deletes a reminder", async ({ page }) => {
   await page.click('#reminder-form button[type="submit"]');
 
   await page.goto("/#/app/manage");
-  const first = page.locator("ul.list > li").first();
+  const first = page.locator("#reminder-list > li").first();
   await expect(first).toContainText("Water the plants");
   await expect(first).toContainText("home");
   await expect(first).toContainText("chores");
@@ -21,23 +21,23 @@ test("adds, edits, toggles done, and deletes a reminder", async ({ page }) => {
   await first.getByRole("button", { name: "Edit Water the plants" }).click();
   await page.fill("#modal-title", "Water the indoor plants");
   await page.click("#modal-form button[type='submit']");
-  await expect(page.locator("ul.list > li").first()).toContainText(
+  await expect(page.locator("#reminder-list > li").first()).toContainText(
     "Water the indoor plants",
   );
 
   // toggle done
   await page
-    .locator("ul.list > li")
+    .locator("#reminder-list > li")
     .first()
     .locator("button[title='Mark as done']")
     .click();
-  await expect(page.locator("ul.list > li").first()).toHaveClass(/done/);
+  await expect(page.locator("#reminder-list > li").first()).toHaveClass(/done/);
 
   // delete
   await page
-    .locator("ul.list > li")
+    .locator("#reminder-list > li")
     .first()
     .getByRole("button", { name: "Delete", exact: false })
     .click();
-  await expect(page.locator("ul.list > li")).toHaveCount(0);
+  await expect(page.locator("#reminder-list > li")).toHaveCount(0);
 });

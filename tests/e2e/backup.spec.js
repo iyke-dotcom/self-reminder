@@ -50,8 +50,10 @@ test("exports a backup and imports it back", async ({ page }) => {
     buffer: await collect(file),
   });
   await page.goto("/#/app/manage");
-  await expect(page.locator("ul.list > li")).toHaveCount(1);
-  await expect(page.locator("ul.list > li")).toContainText("Do the dishes");
+  await expect(page.locator("#reminder-list > li")).toHaveCount(1);
+  await expect(page.locator("#reminder-list > li")).toContainText(
+    "Do the dishes",
+  );
 });
 
 async function collect(stream) {

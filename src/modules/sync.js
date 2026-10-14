@@ -77,6 +77,7 @@ export async function register({ apiUrl, username, password }) {
     username,
     apiUrl,
     role: data.user?.role || "customer",
+    userId: data.user?.id || null,
   });
   setSyncMeta({ lastSyncedAt: 0 });
   return data;
@@ -94,6 +95,7 @@ export async function login({ apiUrl, username, password }) {
     username,
     apiUrl,
     role: data.user?.role || "customer",
+    userId: data.user?.id || null,
   });
   setSyncMeta({ lastSyncedAt: 0 });
   return data;

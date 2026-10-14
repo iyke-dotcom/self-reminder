@@ -34,6 +34,12 @@ import {
   notify,
   requestNotificationPermission,
 } from "./modules/notifications/systemNotifications.js";
+import {
+  startGroupChecker,
+  vibrate,
+} from "./modules/notifications/groupChecker.js";
+import { canUseGroups } from "./modules/groups.js";
+import { createGroupsUi } from "./modules/ui/groups.js";
 import { bindForm } from "./modules/ui/form.js";
 import { renderList } from "./modules/ui/list.js";
 import { openEditModal } from "./modules/ui/modal.js";
@@ -220,6 +226,27 @@ function init({ store, migrated }) {
     },
   });
 
+  // Group events: same notification service, per-member preferences, quiet
+  // hours, and no pings for opted-out (declined) members.
+  startGroupChecker({
+    canRun: () => Boolean(getSession()) && canUseGroups(),
+    onEvent: (event, { quiet }) => {
+      const settings = getSettings();
+      const when = new Date(event.date).toLocaleString();
+      if (!quiet) {
+        if (settings.notifications && notificationPermission() === "granted") {
+          notify(`Group: ${event.title}`, { body: `Due ${when}` });
+        }
+        vibrate();
+      }
+      showToast(
+        toastEl,
+        `${t("reminderDue", { title: event.title })}${quiet ? " (quiet hours)" : ""}`,
+        { isDue: !quiet },
+      );
+    },
+  });
+
   document.querySelectorAll(".filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       view.set({ status: btn.dataset.status });
@@ -232,6 +259,8 @@ function init({ store, migrated }) {
   const notifToggle = document.getElementById("notif-enabled");
   const soundToggle = document.getElementById("sound-enabled");
   const preReminderInput = document.getElementById("pre-reminder");
+  const quietFromInput = document.getElementById("quiet-from");
+  const quietToInput = document.getElementById("quiet-to");
   const exportBtn = document.getElementById("export-backup");
   const importBtn = document.getElementById("import-backup");
   const importFile = document.getElementById("import-file");
@@ -296,6 +325,8 @@ function init({ store, migrated }) {
     notifToggle.checked = Boolean(settings.notifications);
     soundToggle.checked = settings.sound;
     preReminderInput.value = settings.preReminderMinutes;
+    quietFromInput.value = settings.quietFrom || "";
+    quietToInput.value = settings.quietTo || "";
     themeSelect.value = settings.theme || "system";
   }
 
@@ -345,6 +376,15 @@ function init({ store, migrated }) {
     preReminderInput.value = minutes;
     setSettings({ preReminderMinutes: minutes });
   });
+
+  const quietChanged = () => {
+    setSettings({
+      quietFrom: quietFromInput.value || "",
+      quietTo: quietToInput.value || "",
+    });
+  };
+  quietFromInput.addEventListener("change", quietChanged);
+  quietToInput.addEventListener("change", quietChanged);
 
   exportBtn.addEventListener("click", () => {
     downloadBackup(
@@ -402,11 +442,22 @@ function init({ store, migrated }) {
   const adminUsersBody = document.querySelector("#admin-users tbody");
   const adminRemindersBody = document.querySelector("#admin-reminders tbody");
   const adminLogoutBtn = document.getElementById("admin-logout");
-  const welcomeHeading = document.getElementById("welcome-heading");
-  const viewHome = document.getElementById("view-home");
   const viewNew = document.getElementById("view-new");
   const viewManage = document.getElementById("view-manage");
+  const viewGroups = document.getElementById("view-groups");
   const viewSettings = document.getElementById("view-settings");
+
+  const groupsUi = createGroupsUi({
+    els: {
+      groupList: document.getElementById("group-list"),
+      groupEvents: document.getElementById("group-events"),
+      groupsStatus: document.getElementById("groups-status"),
+      groupsBadge: document.getElementById("groups-badge"),
+      groupDetail: document.getElementById("group-detail"),
+    },
+    getSession,
+    toast: (message) => showToast(toastEl, message, { isDue: true }),
+  });
 
   // Unified session: backend token (with role) or offline local fallback
   // (always customer-local, never admin).
@@ -449,19 +500,22 @@ function init({ store, migrated }) {
   }
 
   function showCustomerView(which) {
+    // "all" restores the classic stacked app outlook (form, list, groups,
+    // settings visible together). Focused views show one section at a time.
     const views = {
-      home: viewHome,
       new: viewNew,
       manage: viewManage,
+      groups: viewGroups,
       settings: viewSettings,
     };
     for (const [key, el] of Object.entries(views)) {
-      if (el) el.hidden = key !== which;
+      if (el) el.hidden = which !== "all" && key !== which;
     }
-    // The sync panel is backend plumbing: visible only in Settings, never
-    // on the customer home page.
+    // The sync panel is backend plumbing: visible in Settings (and the
+    // classic stacked view), never as a standalone home page.
     if (syncAccount)
-      syncAccount.style.display = which === "settings" ? "block" : "none";
+      syncAccount.style.display =
+        which === "all" || which === "settings" ? "block" : "none";
   }
 
   function adminCell(text) {
@@ -543,19 +597,23 @@ function init({ store, migrated }) {
           return;
         }
         showSection("app");
-        const sub =
-          hash === "#/app/new"
+        const sub = hash.startsWith("#/app/groups")
+          ? "groups"
+          : hash === "#/app/new"
             ? "new"
             : hash === "#/app/manage"
               ? "manage"
               : hash === "#/app/settings"
                 ? "settings"
-                : "home";
-        if (welcomeHeading && session.username) {
-          welcomeHeading.textContent = `Welcome, ${session.username}`;
-        }
+                : "all";
         showCustomerView(sub);
         updateSyncStatus();
+        if (sub === "groups") {
+          await groupsUi.route(hash);
+        } else if (sub === "all") {
+          groupsUi.showLists();
+          groupsUi.refresh();
+        }
         return;
       }
       if (session) {

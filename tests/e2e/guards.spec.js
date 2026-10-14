@@ -24,14 +24,19 @@ test("customers cannot reach the admin segment", async ({ page }) => {
   await page.goto("/#/admin");
   await expect(page).toHaveURL(/#\/app/);
   await expect(page.locator("#admin-main")).toBeHidden();
-  await expect(page.locator("#view-home")).toBeVisible();
+  await expect(page.locator("#app-main")).toBeVisible();
+  await expect(page.locator("#reminder-form")).toBeVisible();
 });
 
-test("customer home shows only welcome, links and logout", async ({ page }) => {
+test("customers land on the classic app outlook (no admin UI)", async ({
+  page,
+}) => {
   await signupAs(page, unique("home"));
-  await expect(page.locator("#welcome-heading")).toContainText("Welcome");
-  await expect(page.locator('#view-home a[href="#/app/new"]')).toBeVisible();
-  await expect(page.locator('#view-home a[href="#/app/manage"]')).toBeVisible();
+  // classic outlook: form, manage section and groups visible after login
+  // (an empty <ul> has zero size, so assert the section, not the list)
+  await expect(page.locator("#reminder-form")).toBeVisible();
+  await expect(page.locator("#view-manage")).toBeVisible();
+  await expect(page.locator("#view-groups")).toBeVisible();
   await expect(page.locator("#logout-btn")).toBeVisible();
   // no admin UI on customer pages
   await expect(page.locator("#admin-main")).toBeHidden();

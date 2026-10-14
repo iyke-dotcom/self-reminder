@@ -15,15 +15,17 @@ test("searches and filters reminders", async ({ page }) => {
   await page.click('#reminder-form button[type="submit"]');
 
   await page.goto("/#/app/manage");
-  await expect(page.locator("ul.list > li")).toHaveCount(2);
+  await expect(page.locator("#reminder-list > li")).toHaveCount(2);
 
   await page.fill("#search", "dentist");
-  await expect(page.locator("ul.list > li")).toHaveCount(1);
-  await expect(page.locator("ul.list > li")).toContainText("Call dentist");
+  await expect(page.locator("#reminder-list > li")).toHaveCount(1);
+  await expect(page.locator("#reminder-list > li")).toContainText(
+    "Call dentist",
+  );
 
   await page.fill("#search", "");
   await page.click('button[data-status="done"]');
-  await expect(page.locator("ul.list > li")).toHaveCount(0);
+  await expect(page.locator("#reminder-list > li")).toHaveCount(0);
   await page.click('button[data-status="all"]');
-  await expect(page.locator("ul.list > li")).toHaveCount(2);
+  await expect(page.locator("#reminder-list > li")).toHaveCount(2);
 });

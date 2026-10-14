@@ -38,7 +38,7 @@ test("registers, syncs across logins, and deletes via sync UI", async ({
   // delete it; the tombstone should reach the backend
   await page.goto("/#/app/manage");
   await page
-    .locator("ul.list > li")
+    .locator("#reminder-list > li")
     .first()
     .getByRole("button", { name: "Delete", exact: false })
     .click();

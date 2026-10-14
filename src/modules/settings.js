@@ -4,6 +4,8 @@ export const DEFAULT_SETTINGS = {
   sound: true,
   preReminderMinutes: 0,
   theme: "system",
+  quietFrom: "",
+  quietTo: "",
 };
 
 let cached = null;

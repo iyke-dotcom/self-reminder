@@ -15,6 +15,7 @@ A lightweight, installable browser-based reminder app that helps you remember im
 - **Durable storage** — data is stored in IndexedDB with automatic migration from the legacy localStorage format
 - **Backup & restore** — export JSON and import it back
 - **Cross-device sync (optional)** — accounts + login backed by a self-hosted **PostgreSQL** server, with last-write-wins merging and tombstone deletes
+- **Groups & shared events** — solo, pair, study, medical, corporate and custom groups (max 50 members) with invite codes, RSVP (going / maybe / declined + live summary), opt-out notes, role-aware labels, and per-member notifications with quiet hours
 - **Settings** — sound on/off, "remind me X minutes before", notification toggle, theme (system/dark/light)
 
 ## Getting Started
@@ -50,7 +51,7 @@ The app has three segments behind a hash router:
 | Route | Segment | Who |
 | ----- | ------- | --- |
 | `#/` `#/login` | Public landing + customer sign in / sign up | Everyone |
-| `#/app`, `#/app/new`, `#/app/manage`, `#/app/settings` | Customer (home, add, manage, settings) | Logged-in `customer` only |
+| `#/app`, `#/app/new`, `#/app/manage`, `#/app/groups*`, `#/app/settings` | Customer (classic stacked app + focused views + groups) | Logged-in `customer` only |
 | `#/admin` | Admin (users table + all reminders) | Logged-in `admin` only |
 
 Guards: unauthenticated visits go to `#/login`; customers visiting `#/admin` get sent to `#/app` (API: 403); admins visiting `#/app*` get sent to `#/admin`. The customer home shows only a welcome message, Add/Manage links, and logout — the sync debug panel lives under Settings and admin UI is never linked from customer pages. Registration always creates a `customer` (the client cannot set a role); passwords are scrypt-hashed, auth is HMAC-signed JWT.
@@ -75,6 +76,21 @@ This creates (or promotes) that username to `role = 'admin'`. Then:
 - **Admin:** open the app, Sign in with the seeded admin credentials → lands on `#/admin`.
 
 Admin API (all require an admin token): `GET /api/admin/users`, `GET /api/admin/reminders`. Customer-scoped alias: `GET /api/customer/reminders` (403 for admins).
+
+## Groups & shared events
+
+Solo reminders work exactly as before. Logged-in customers (online backend session) also get a **Groups** section on `#/app` with:
+
+- **My groups** — create (`#/app/groups/new`: name, description, type), member counts, unread badges (pending RSVPs + new notes)
+- **Upcoming group events** — soonest first, each with a live RSVP summary (`8 going · 2 maybe · 1 declined`)
+- **Join** — via shareable invite link/code (`#/app/groups/join/:code`), username/email search, direct add, or the contact picker (where supported)
+- **Group page** — events with Going ✅ / Maybe ❓ / Can't make it ❌, opt-out notes (author + timestamp, edit/delete own, admin hide/unhide, private-to-organizers option), members (promote/remove with confirm, leave anytime), invite-code revoke/refresh, rename, admin-only-event toggle, delete-with-warning
+- **Templates** — solo / pair / study / medical / corporate / custom swap icons, member labels, placeholders and examples over one shared engine (`src/modules/groupTemplates.js`)
+- **Notifications** — group events reuse the toast + system-notification service with each member's own sound toggle, optional quiet hours (Settings), vibration where supported, and per-event reminder schedules (week/day/hour/15 min presets); members who RSVP "declined" stay listed but are never pinged
+
+Rules enforced on the backend: membership required for everything (strangers get 404), group-admin-only management, last-admin guard (promote first or delete), `MAX_GROUP_MEMBERS = 50` (`server/db.js`), invite codes expire after `INVITE_TTL_MS` = 7 days and are revocable.
+
+Group API (customer token): `GET/POST /api/groups`, `GET /api/groups/feed`, `POST /api/groups/join`, `GET /api/invites/:code` (public preview), `GET /api/users/search?q=`, plus per-group `GET/PATCH/DELETE /api/groups/:id`, `/seen`, `/leave`, `/invite/refresh`, `/members`, `/events`, `/events/:eventId/rsvp`, `/events/:eventId/notes`.
 
 ### E2E with an admin
 
@@ -137,6 +153,10 @@ src/
     backup.js       JSON export/import
     sync.js         account auth (now with role) + cross-device sync
     admin.js        admin API client (users, all reminders)
+    groups.js       groups API client + invite links + session user id
+    groupTemplates.js role-aware labels per group type (one engine)
+    notifications/groupChecker.js group-event pings (quiet hours, opt-out)
+    ui/groups.js    groups lists, detail, forms (createElement, no innerHTML)
     ics.js          calendar (.ics) export
   utils/            date helpers, natural-language dates, id generation
   i18n.js           message catalog (en, fr) + t()
